@@ -11,7 +11,7 @@ import argparse
 import numpy as np  
 from copy import deepcopy
 import matplotlib.pyplot as plt
-
+import copy
 import torch
 import torch.optim
 import torch.nn as nn
@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser(description='PyTorch Lottery Tickets Experiment
 
 ##################################### Dataset #################################################
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
-parser.add_argument('--dataset', type=str, default='cifar10_no_val', help='dataset')
+parser.add_argument('--dataset', type=str, default='cifar10', help='dataset')
 parser.add_argument('--input_size', type=int, default=32, help='size of input images')
 parser.add_argument('--data_dir', type=str, default='../data/tiny-imagenet-200', help='dir to tiny-imagenet')
 parser.add_argument('--num_workers', type=int, default=4)
@@ -41,7 +41,7 @@ parser.add_argument('--arch', type=str, default='resnet18', help='model architec
 parser.add_argument('--imagenet_arch', action="store_true", help="architecture for imagenet size samples")
 
 ##################################### General setting ############################################
-parser.add_argument('--seed', default=None, type=int, help='random seed')
+parser.add_argument('--seed', default=1, type=int, help='random seed')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--workers', type=int, default=4, help='number of workers in dataloader')
 parser.add_argument('--resume', action="store_true", help="resume from checkpoint")
@@ -66,6 +66,12 @@ parser.add_argument('--random_prune', action='store_true', help='whether using r
 parser.add_argument('--rewind_epoch', default=3, type=int, help='rewind checkpoint')
 ##################################### unlearn setting #################################################
 parser.add_argument('--unlearn', type=str, default='retrain', help='methods to unlearn')
+parser.add_argument('--num_indexes_to_replace', type=int, default=None,
+                    help='Number of samples of class to forget')
+parser.add_argument('--class_to_replace', type=int, default=0,
+                    help='Class to forget')
+parser.add_argument('--indexes_to_replace', type=list, default=None,
+                    help='Class to forget')
 best_sa = 0
 
 def main():
@@ -77,25 +83,33 @@ def main():
     os.makedirs(args.save_dir, exist_ok=True)
     if args.seed:
         setup_seed(args.seed)
-
+    seed = args.seed
     # prepare dataset 
-    model, train_loader, val_loader, test_loader = setup_model_dataset(args)
+    model, train_loader_full, val_loader, test_loader,marked_loader = setup_model_dataset(args)
     model.cuda()
-    
+    def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
+        setup_seed(seed)
+        loader_args = {'num_workers': 0, 'pin_memory': False}
+        def _init_fn(worker_id):
+            np.random.seed(int(seed))
+        return torch.utils.data.DataLoader(dataset, batch_size=batch_size,num_workers=0,pin_memory=True,shuffle=shuffle)
+
+    forget_dataset = copy.deepcopy(marked_loader.dataset)
+    marked = forget_dataset.targets < 0
+    forget_dataset.data = forget_dataset.data[marked]
+    forget_dataset.targets = - forget_dataset.targets[marked] - 1
+    forget_loader = replace_loader_dataset(train_loader_full, forget_dataset, seed=seed, shuffle=True)
+    print(len(forget_dataset))
+    retain_dataset = copy.deepcopy(marked_loader.dataset)
+    marked = retain_dataset.targets >= 0
+    retain_dataset.data = retain_dataset.data[marked]
+    retain_dataset.targets = retain_dataset.targets[marked]
+    retain_loader = replace_loader_dataset(train_loader_full, retain_dataset, seed=seed, shuffle=True)
+    print(len(retain_dataset))
+    assert(len(forget_dataset) + len(retain_dataset) == len(train_loader_full.dataset))
+
     criterion = nn.CrossEntropyLoss()
     decreasing_lr = list(map(int, args.decreasing_lr.split(',')))
-
-    if args.prune_type == 'lt':
-        print('lottery tickets setting (rewind to the same random init)')
-        initalization = deepcopy(model.state_dict())
-    elif args.prune_type == 'pt':
-        print('lottery tickets from best dense weight')
-        initalization = None
-    elif args.prune_type == 'rewind_lt':
-        print('lottery tickets with early weight rewinding')
-        initalization = None
-    else:
-        raise ValueError('unknown prune_type')
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -133,111 +147,175 @@ def main():
         print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
 
     else:
-        all_result = {}
-        all_result['train_ta'] = []
-        all_result['test_ta'] = []
-        all_result['val_ta'] = []
-
-        start_epoch = 0
-        start_state = 0
-
-    print('######################################## Start Standard Training Iterative Pruning ########################################')
-    
-    for state in range(start_state, args.pruning_times):
-
-        print('******************************************')
-        print('pruning state', state)
-        print('******************************************')
-        
-        check_sparsity(model)        
-        for epoch in range(start_epoch, args.epochs):
-            start_time = time.time()
-            print(optimizer.state_dict()['param_groups'][0]['lr'])
-            acc = train(train_loader, model, criterion, optimizer, epoch)
-
-            if state == 0:
-                if (epoch+1) == args.rewind_epoch:
-                    torch.save(model.state_dict(), os.path.join(args.save_dir, 'epoch_{}_rewind_weight.pt'.format(epoch+1)))
-                    if args.prune_type == 'rewind_lt':
-                        initalization = deepcopy(model.state_dict())
-
-            # evaluate on validation set
-            tacc = validate(val_loader, model, criterion)
-            # evaluate on test set
+        if args.unlearn == "retrain":
+            all_result = {}
+            all_result['retain_ta'] = []
+            all_result['test_ta'] = []
+            all_result['val_ta'] = []
+            all_result['forget_ta'] = []
+            start_epoch = 0
+            start_state = 0
+            checkpoint = torch.load(args.mask, map_location = torch.device('cuda:'+str(args.gpu)))
+            current_mask = extract_mask(checkpoint)
+            prune_model_custom(model, current_mask)
+            check_sparsity(model)
             test_tacc = validate(test_loader, model, criterion)
+            check_sparsity(model)        
+            for epoch in range(0, args.epochs):
+                start_time = time.time()
+                print(optimizer.state_dict()['param_groups'][0]['lr'])
+                acc = train(retain_loader, model, criterion, optimizer, epoch)
 
-            scheduler.step()
-
-            all_result['train_ta'].append(acc)
-            all_result['val_ta'].append(tacc)
-            all_result['test_ta'].append(test_tacc)
-
-            # remember best prec@1 and save checkpoint
-            is_best_sa = tacc  > best_sa
-            best_sa = max(tacc, best_sa)
-
-            save_checkpoint({
-                'state': state,
-                'result': all_result,
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'best_sa': best_sa,
-                'optimizer': optimizer.state_dict(),
-                'scheduler': scheduler.state_dict(),
-                'init_weight': initalization
-            }, is_SA_best=is_best_sa, pruning=state, save_path=args.save_dir)
-
-            # plot training curve
-            plt.plot(all_result['train_ta'], label='train_acc')
-            plt.plot(all_result['val_ta'], label='val_acc')
-            plt.plot(all_result['test_ta'], label='test_acc')
-            plt.legend()
-            plt.savefig(os.path.join(args.save_dir, str(state)+'net_train.png'))
-            plt.close()
-            print("one epoch duration:{}".format(time.time()-start_time))
-
-        #report result
-        check_sparsity(model)
-        print("Performance on the test data set")
-        test_tacc = validate(test_loader, model, criterion)
-        if len(all_result['val_ta'])!=0:
-            val_pick_best_epoch = np.argmax(np.array(all_result['val_ta']))
-            print('* best SA = {}, Epoch = {}'.format(all_result['test_ta'][val_pick_best_epoch], val_pick_best_epoch+1))
-
-        all_result = {}
-        all_result['train_ta'] = []
-        all_result['test_ta'] = []
-        all_result['val_ta'] = []
-        best_sa = 0
-        start_epoch = 0
-
-        if args.prune_type == 'pt':
-            print('* loading pretrained weight')
-            initalization = torch.load(os.path.join(args.save_dir, '0model_SA_best.pth.tar'), map_location = torch.device('cuda:'+str(args.gpu)))['state_dict']
-
-        #pruning and rewind 
-        if args.random_prune:
-            print('random pruning')
-            pruning_model_random(model, args.rate)
-        else:
-            print('L1 pruning')
-            pruning_model(model, args.rate)
-
-        remain_weight = check_sparsity(model)
-        current_mask = extract_mask(model.state_dict()) 
-        remove_prune(model)
-
-        # weight rewinding
-        model.load_state_dict(initalization, strict=False) # rewind, initialization is a full model architecture without masks
-        prune_model_custom(model, current_mask)
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                    momentum=args.momentum,
-                                    weight_decay=args.weight_decay)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
-        if args.rewind_epoch:
-            # learning rate rewinding 
-            for _ in range(args.rewind_epoch):
+                # evaluate on validation set
+                tacc = validate(val_loader, model, criterion)
+                # evaluate on test set
+                test_tacc = validate(test_loader, model, criterion)
+                # evaluate on forget set
+                f_tacc = validate(forget_loader, model, criterion)
                 scheduler.step()
+
+                all_result['retain_ta'].append(acc)
+                all_result['test_ta'].append(tacc)
+                all_result['val_ta'].append(test_tacc)
+                all_result['forget_ta'].append(f_tacc)
+                # remember best prec@1 and save checkpoint
+                is_best_sa = tacc  > best_sa
+                best_sa = max(tacc, best_sa)
+
+                save_checkpoint({
+                    'state': 0,
+                    'result': all_result,
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'best_sa': best_sa,
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict(),
+                    'init_weight': None
+                }, is_SA_best=is_best_sa, pruning=0, save_path=args.save_dir)
+
+                # plot training curve
+                plt.plot(all_result['retain'], label='train_acc')
+                plt.plot(all_result['val_ta'], label='val_acc')
+                plt.plot(all_result['test_ta'], label='test_acc')
+                plt.plot(all_result['forget_ta'], label='forget_acc')
+                plt.legend()
+                plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
+                plt.close()
+                print("one epoch duration:{}".format(time.time()-start_time))
+        else:
+            checkpoint = torch.load(args.mask, map_location = torch.device('cuda:'+str(args.gpu)))
+            current_mask = extract_mask(checkpoint)
+            prune_model_custom(model, current_mask)
+            check_sparsity(model)
+            model.load_state_dict(checkpoint, strict=False)
+            # test_tacc = validate(test_loader, model, criterion)
+
+
+        if args.unlearn == "RL":
+            all_result = {}
+            all_result['retain_ta'] = []
+            all_result['test_ta'] = []
+            all_result['val_ta'] = []
+            all_result['forget_ta'] = []
+            start_epoch = 0
+            start_state = 0
+            for epoch in range(0, args.epochs):
+                start_time = time.time()
+                print(optimizer.state_dict()['param_groups'][0]['lr'])
+                tacc = validate(val_loader, model, criterion)
+                acc = RL(forget_loader, model, criterion, optimizer, epoch)
+
+                # evaluate on validation set
+                tacc = validate(val_loader, model, criterion)
+                # evaluate on test set
+                test_tacc = validate(test_loader, model, criterion)
+                # evaluate on forget set
+                f_tacc = validate(retain_loader, model, criterion)
+                scheduler.step()
+
+                all_result['retain_ta'].append(f_tacc)
+                all_result['test_ta'].append(tacc)
+                all_result['val_ta'].append(test_tacc)
+                all_result['forget_ta'].append(acc)
+                # remember best prec@1 and save checkpoint
+                is_best_sa = tacc  > best_sa
+                best_sa = max(tacc, best_sa)
+
+                save_checkpoint({
+                    'state': 0,
+                    'result': all_result,
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'best_sa': best_sa,
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict(),
+                    'init_weight': None
+                }, is_SA_best=is_best_sa, pruning=0, save_path=args.save_dir)
+
+                # plot training curve
+                plt.plot(all_result['retain_ta'], label='train_acc')
+                plt.plot(all_result['val_ta'], label='val_acc')
+                plt.plot(all_result['test_ta'], label='test_acc')
+                plt.plot(all_result['forget_ta'], label='forget_acc')
+                plt.legend()
+                plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
+                plt.close()
+                print("one epoch duration:{}".format(time.time()-start_time))
+        elif args.unlearn == "GA":
+            all_result = {}
+            all_result['retain_ta'] = []
+            all_result['test_ta'] = []
+            all_result['val_ta'] = []
+            all_result['forget_ta'] = []
+            start_epoch = 0
+            start_state = 0
+            for epoch in range(0, args.epochs):
+                start_time = time.time()
+                print(optimizer.state_dict()['param_groups'][0]['lr'])
+                acc = GA(forget_loader, model, criterion, optimizer, epoch)
+
+                # evaluate on validation set
+                tacc = validate(val_loader, model, criterion)
+                # evaluate on test set
+                test_tacc = validate(test_loader, model, criterion)
+                # evaluate on retain set
+                f_tacc = validate(retain_loader, model, criterion)
+                scheduler.step()
+
+                all_result['retain_ta'].append(f_tacc)
+                all_result['test_ta'].append(tacc)
+                all_result['val_ta'].append(test_tacc)
+                all_result['forget_ta'].append(acc)
+                # remember best prec@1 and save checkpoint
+                is_best_sa = tacc  > best_sa
+                best_sa = max(tacc, best_sa)
+
+                save_checkpoint({
+                    'state': 0,
+                    'result': all_result,
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'best_sa': best_sa,
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict(),
+                    'init_weight': None
+                }, is_SA_best=is_best_sa, pruning=0, save_path=args.save_dir)
+
+                # plot training curve
+                plt.plot(all_result['retain'], label='train_acc')
+                plt.plot(all_result['val_ta'], label='val_acc')
+                plt.plot(all_result['test_ta'], label='test_acc')
+                plt.plot(all_result['forget_ta'], label='forget_acc')
+                plt.legend()
+                plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
+                plt.close()
+                print("one epoch duration:{}".format(time.time()-start_time))
+
+
+
+        
+
+
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
@@ -287,7 +365,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
     return top1.avg
 
 
-def retrain(train_loader, model, criterion, optimizer, epoch):
+def GA(train_loader, model, criterion, optimizer, epoch):
     
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -302,6 +380,54 @@ def retrain(train_loader, model, criterion, optimizer, epoch):
             warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
 
         image = image.cuda()
+        target = target.cuda()
+
+        # compute output
+        output_clean = model(image)
+        loss = -criterion(output_clean, target)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        output = output_clean.float()
+        loss = loss.float()
+        # measure accuracy and record loss
+        prec1 = accuracy(output.data, target)[0]
+
+        losses.update(loss.item(), image.size(0))
+        top1.update(prec1.item(), image.size(0))
+
+        if i % args.print_freq == 0:
+            end = time.time()
+            print('Epoch: [{0}][{1}/{2}]\t'
+                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                'Accuracy {top1.val:.3f} ({top1.avg:.3f})\t'
+                'Time {3:.2f}'.format(
+                    epoch, i, len(train_loader), end-start, loss=losses, top1=top1))
+            start = time.time()
+
+    print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
+
+    return top1.avg
+
+
+def RL(train_loader, model, criterion, optimizer, epoch):
+    
+    losses = AverageMeter()
+    top1 = AverageMeter()
+
+    # switch to train mode
+    model.train()
+
+    start = time.time()
+    for i, (image, target) in enumerate(train_loader):
+
+        if epoch < args.warmup:
+            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+
+        image = image.cuda()
+        target = torch.randint(0,9,target.shape)
         target = target.cuda()
 
         # compute output
