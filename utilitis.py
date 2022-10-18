@@ -15,7 +15,7 @@ from models import *
 from dataset import *
 import random
 
-__all__ = ['setup_model_dataset','AverageMeter','warmup_lr','save_checkpoint','setup_seed']
+__all__ = ['setup_model_dataset','AverageMeter','warmup_lr','save_checkpoint','setup_seed', 'accuracy']
 
 def warmup_lr(epoch, step, optimizer, one_epoch_step,args):
 
@@ -137,23 +137,6 @@ class NormalizeByChannelMeanStd(torch.nn.Module):
         mean = mean[None, :, None, None]
         std = std[None, :, None, None]
         return tensor.sub(mean).div(std)
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
