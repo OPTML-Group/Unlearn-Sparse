@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--mask', type=str, default=None, help='sparse model')
 
     ##################################### Training setting #################################################
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=256, help='batch size')
     parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay')
@@ -48,5 +48,5 @@ def parse_args():
                         help='Class to forget')
     parser.add_argument('--indexes_to_replace', type=list, default=None,
                         help='Class to forget')
-
+    parser.add_argument('--alpha', default=0.2, type=float, help='unlearn noise')  # pruning rate is always 20%
     return parser.parse_args()

@@ -38,15 +38,14 @@ def main():
     global args, best_sa
     args = arg_parser.parse_args()
     print(args)
-
-    torch.cuda.set_device(int(args.gpu))
+    device = f"cuda:{int(args.gpu)}" if torch.cuda.is_available() else "cpu"
     os.makedirs(args.save_dir, exist_ok=True)
     if args.seed:
         setup_seed(args.seed)
     seed = args.seed
     # prepare dataset 
     model, train_loader_full, val_loader, test_loader,marked_loader = setup_model_dataset(args)
-    model.cuda()
+    model.to(device)
     def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
         setup_seed(seed)
         loader_args = {'num_workers': 0, 'pin_memory': False}
@@ -124,14 +123,14 @@ def main():
         # print(tacc,test_tacc,f_tacc,retain_tacc)
 
         forget_len = len(forget_dataset)
-        retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
-        retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
-        retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-        retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-        print(len(retain_dataset_train))
-        print(len(retain_dataset_test))
-        MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model)
-
+        # retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
+        # retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
+        # retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+        # retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+        # print(len(retain_dataset_train))
+        # print(len(retain_dataset_test))
+        # MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model)
+        print(efficacy(model,forget_loader,device))
         exit(0)
     
 if __name__ == '__main__':
