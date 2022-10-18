@@ -24,6 +24,7 @@ import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 from utils import NormalizeByChannelMeanStd
 
+from trainer import validate, train
 from utils import *
 from pruner import *
 from metrics import *
@@ -109,14 +110,14 @@ def main():
         prune_model_custom(model, current_mask)
         check_sparsity(model)
         model.load_state_dict(checkpoint, strict=False)
-            # test_tacc = validate(test_loader, model, criterion)
-        # tacc = validate(val_loader, model, criterion)
+            # test_tacc = validate(test_loader, model, criterion, args)
+        # tacc = validate(val_loader, model, criterion, args)
         # # evaluate on test set
-        # test_tacc = validate(test_loader, model, criterion)
+        # test_tacc = validate(test_loader, model, criterion, args)
         # # evaluate on forget set
-        # f_tacc = validate(forget_loader, model, criterion)
+        # f_tacc = validate(forget_loader, model, criterion, args)
         # # evaluate on retain dataset
-        # retain_tacc =  validate(retain_loader,model,criterion)
+        # retain_tacc =  validate(retain_loader,model,criterion, args)
 
 
         # print(tacc,test_tacc,f_tacc,retain_tacc)
@@ -136,55 +137,6 @@ def main():
         
 
 
-
-
-def train(train_loader, model, criterion, optimizer, epoch):
-    
-    losses = AverageMeter()
-    top1 = AverageMeter()
-
-    # switch to train mode
-    model.train()
-
-    start = time.time()
-    for i, (image, target) in enumerate(train_loader):
-
-        if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
-
-        image = image.cuda()
-        target = target.cuda()
-
-        # compute output
-        output_clean = model(image)
-        loss = criterion(output_clean, target)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        output = output_clean.float()
-        loss = loss.float()
-        # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
-
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            end = time.time()
-            print('Epoch: [{0}][{1}/{2}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})\t'
-                'Time {3:.2f}'.format(
-                    epoch, i, len(train_loader), end-start, loss=losses, top1=top1))
-            start = time.time()
-
-    print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
-
-    return top1.avg
-
-
 def GA(train_loader, model, criterion, optimizer, epoch):
     
     losses = AverageMeter()
@@ -197,7 +149,7 @@ def GA(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = target.cuda()
@@ -244,7 +196,7 @@ def RL(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = torch.randint(0,9,target.shape)
@@ -278,69 +230,6 @@ def RL(train_loader, model, criterion, optimizer, epoch):
     print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
 
     return top1.avg
-
-
-
-
-
-def validate(val_loader, model, criterion):
-    """
-    Run evaluation
-    """
-    losses = AverageMeter()
-    top1 = AverageMeter()
-
-    # switch to evaluate mode
-    model.eval()
-
-    for i, (image, target) in enumerate(val_loader):
-        
-        image = image.cuda()
-        target = target.cuda()
-
-        # compute output
-        with torch.no_grad():
-            output = model(image)
-            loss = criterion(output, target)
-
-        output = output.float()
-        loss = loss.float()
-
-        # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    i, len(val_loader), loss=losses, top1=top1))
-
-    print('valid_accuracy {top1.avg:.3f}'
-        .format(top1=top1))
-
-    return top1.avg
-
-def save_checkpoint(state, is_SA_best, save_path, pruning, filename='checkpoint.pth.tar'):
-    filepath = os.path.join(save_path, str(pruning)+filename)
-    torch.save(state, filepath)
-    if is_SA_best:
-        shutil.copyfile(filepath, os.path.join(save_path, str(pruning)+'model_SA_best.pth.tar'))
-
-def warmup_lr(epoch, step, optimizer, one_epoch_step):
-
-    overall_steps = args.warmup*one_epoch_step
-    current_steps = epoch*one_epoch_step + step 
-
-    lr = args.lr * current_steps/overall_steps
-    lr = min(lr, args.lr)
-
-    for p in optimizer.param_groups:
-        p['lr']=lr
-
-    
-
 
 
     
