@@ -24,6 +24,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 import utils
 from trainer import validate, train
+import unlearn
 from pruner import *
 
 import arg_parser
@@ -179,7 +180,7 @@ def main():
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
                 tacc = validate(val_loader, model, criterion, args)
-                acc = RL(forget_loader, model, criterion, optimizer, epoch)
+                acc = unlearn.RL(forget_loader, model, criterion, optimizer, epoch, args)
 
                 # evaluate on validation set
                 tacc = validate(val_loader, model, criterion, args)
@@ -228,7 +229,7 @@ def main():
             for epoch in range(0, args.epochs):
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
-                acc = GA(forget_loader, model, criterion, optimizer, epoch)
+                acc = unlearn.GA(forget_loader, model, criterion, optimizer, epoch, args)
 
                 # evaluate on validation set
                 tacc = validate(val_loader, model, criterion, args)
@@ -266,106 +267,6 @@ def main():
                 plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
                 plt.close()
                 print("one epoch duration:{}".format(time.time()-start_time))
-
-
-
-        
-
-
-def GA(train_loader, model, criterion, optimizer, epoch):
-    
-    losses = utils.AverageMeter()
-    top1 = utils.AverageMeter()
-
-    # switch to train mode
-    model.train()
-
-    start = time.time()
-    for i, (image, target) in enumerate(train_loader):
-
-        if epoch < args.warmup:
-            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
-
-        image = image.cuda()
-        target = target.cuda()
-
-        # compute output
-        output_clean = model(image)
-        loss = -criterion(output_clean, target)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        output = output_clean.float()
-        loss = loss.float()
-        # measure accuracy and record loss
-        prec1 = utils.accuracy(output.data, target)[0]
-
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            end = time.time()
-            print('Epoch: [{0}][{1}/{2}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})\t'
-                'Time {3:.2f}'.format(
-                    epoch, i, len(train_loader), end-start, loss=losses, top1=top1))
-            start = time.time()
-
-    print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
-
-    return top1.avg
-
-
-def RL(train_loader, model, criterion, optimizer, epoch):
-    
-    losses = utils.AverageMeter()
-    top1 = utils.AverageMeter()
-
-    # switch to train mode
-    model.train()
-
-    start = time.time()
-    for i, (image, target) in enumerate(train_loader):
-
-        if epoch < args.warmup:
-            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
-
-        image = image.cuda()
-        target = torch.randint(0,9,target.shape)
-        target = target.cuda()
-
-        # compute output
-        output_clean = model(image)
-        loss = criterion(output_clean, target)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        output = output_clean.float()
-        loss = loss.float()
-        # measure accuracy and record loss
-        prec1 = utils.accuracy(output.data, target)[0]
-
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            end = time.time()
-            print('Epoch: [{0}][{1}/{2}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})\t'
-                'Time {3:.2f}'.format(
-                    epoch, i, len(train_loader), end-start, loss=losses, top1=top1))
-            start = time.time()
-
-    print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
-
-    return top1.avg
-
 
 if __name__ == '__main__':
     main()
