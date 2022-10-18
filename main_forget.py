@@ -21,9 +21,8 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
-from utilitis import NormalizeByChannelMeanStd
 
-from utilitis import *
+import utilitis
 from pruner import *
 
 import arg_parser
@@ -41,7 +40,7 @@ def main():
         setup_seed(args.seed)
     seed = args.seed
     # prepare dataset 
-    model, train_loader_full, val_loader, test_loader, marked_loader = setup_model_dataset(args)
+    model, train_loader_full, val_loader, test_loader, marked_loader = utilitis.setup_model_dataset(args)
     model.cuda()
     def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
         setup_seed(seed)
@@ -276,8 +275,8 @@ def main():
 
 def train(train_loader, model, criterion, optimizer, epoch):
     
-    losses = AverageMeter()
-    top1 = AverageMeter()
+    losses = utilitis.AverageMeter()
+    top1 = utilitis.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -302,7 +301,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
+        prec1 = utilitis.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -323,8 +322,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 def GA(train_loader, model, criterion, optimizer, epoch):
     
-    losses = AverageMeter()
-    top1 = AverageMeter()
+    losses = utilitis.AverageMeter()
+    top1 = utilitis.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -349,7 +348,7 @@ def GA(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
+        prec1 = utilitis.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -370,8 +369,8 @@ def GA(train_loader, model, criterion, optimizer, epoch):
 
 def RL(train_loader, model, criterion, optimizer, epoch):
     
-    losses = AverageMeter()
-    top1 = AverageMeter()
+    losses = utilitis.AverageMeter()
+    top1 = utilitis.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -397,7 +396,7 @@ def RL(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
+        prec1 = utilitis.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -415,16 +414,12 @@ def RL(train_loader, model, criterion, optimizer, epoch):
 
     return top1.avg
 
-
-
-
-
 def validate(val_loader, model, criterion):
     """
     Run evaluation
     """
-    losses = AverageMeter()
-    top1 = AverageMeter()
+    losses = utilitis.AverageMeter()
+    top1 = utilitis.AverageMeter()
 
     # switch to evaluate mode
     model.eval()
@@ -443,7 +438,7 @@ def validate(val_loader, model, criterion):
         loss = loss.float()
 
         # measure accuracy and record loss
-        prec1 = accuracy(output.data, target)[0]
+        prec1 = utilitis.accuracy(output.data, target)[0]
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
 
@@ -475,38 +470,6 @@ def warmup_lr(epoch, step, optimizer, one_epoch_step):
     for p in optimizer.param_groups:
         p['lr']=lr
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-def accuracy(output, target, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
-    maxk = max(topk)
-    batch_size = target.size(0)
-
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
-        res.append(correct_k.mul_(100.0 / batch_size))
-    return res
-
 def setup_seed(seed): 
     print('setup random seed = {}'.format(seed))
     torch.manual_seed(seed) 
@@ -515,11 +478,6 @@ def setup_seed(seed):
     random.seed(seed) 
     torch.backends.cudnn.deterministic = True 
 
-    
-
-
-
-    
 if __name__ == '__main__':
     main()
 
