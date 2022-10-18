@@ -22,7 +22,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 
-import utilitis
+import utils
 from pruner import *
 
 import arg_parser
@@ -37,13 +37,13 @@ def main():
     torch.cuda.set_device(int(args.gpu))
     os.makedirs(args.save_dir, exist_ok=True)
     if args.seed:
-        utilitis.setup_seed(args.seed)
+        utils.setup_seed(args.seed)
     seed = args.seed
     # prepare dataset 
-    model, train_loader_full, val_loader, test_loader, marked_loader = utilitis.setup_model_dataset(args)
+    model, train_loader_full, val_loader, test_loader, marked_loader = utils.setup_model_dataset(args)
     model.cuda()
     def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
-        utilitis.setup_seed(seed)
+        utils.setup_seed(seed)
         loader_args = {'num_workers': 0, 'pin_memory': False}
         def _init_fn(worker_id):
             np.random.seed(int(seed))
@@ -137,7 +137,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                utilitis.save_checkpoint({
+                utils.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -196,7 +196,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                utilitis.save_checkpoint({
+                utils.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -245,7 +245,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                utilitis.save_checkpoint({
+                utils.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -275,8 +275,8 @@ def main():
 
 def train(train_loader, model, criterion, optimizer, epoch):
     
-    losses = utilitis.AverageMeter()
-    top1 = utilitis.AverageMeter()
+    losses = utils.AverageMeter()
+    top1 = utils.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -285,7 +285,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
+            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = target.cuda()
@@ -301,7 +301,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = utilitis.accuracy(output.data, target)[0]
+        prec1 = utils.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -322,8 +322,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 def GA(train_loader, model, criterion, optimizer, epoch):
     
-    losses = utilitis.AverageMeter()
-    top1 = utilitis.AverageMeter()
+    losses = utils.AverageMeter()
+    top1 = utils.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -332,7 +332,7 @@ def GA(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
+            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = target.cuda()
@@ -348,7 +348,7 @@ def GA(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = utilitis.accuracy(output.data, target)[0]
+        prec1 = utils.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -369,8 +369,8 @@ def GA(train_loader, model, criterion, optimizer, epoch):
 
 def RL(train_loader, model, criterion, optimizer, epoch):
     
-    losses = utilitis.AverageMeter()
-    top1 = utilitis.AverageMeter()
+    losses = utils.AverageMeter()
+    top1 = utils.AverageMeter()
 
     # switch to train mode
     model.train()
@@ -379,7 +379,7 @@ def RL(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
+            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = torch.randint(0,9,target.shape)
@@ -396,7 +396,7 @@ def RL(train_loader, model, criterion, optimizer, epoch):
         output = output_clean.float()
         loss = loss.float()
         # measure accuracy and record loss
-        prec1 = utilitis.accuracy(output.data, target)[0]
+        prec1 = utils.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
@@ -418,8 +418,8 @@ def validate(val_loader, model, criterion):
     """
     Run evaluation
     """
-    losses = utilitis.AverageMeter()
-    top1 = utilitis.AverageMeter()
+    losses = utils.AverageMeter()
+    top1 = utils.AverageMeter()
 
     # switch to evaluate mode
     model.eval()
@@ -438,7 +438,7 @@ def validate(val_loader, model, criterion):
         loss = loss.float()
 
         # measure accuracy and record loss
-        prec1 = utilitis.accuracy(output.data, target)[0]
+        prec1 = utils.accuracy(output.data, target)[0]
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
 

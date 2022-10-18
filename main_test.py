@@ -22,9 +22,9 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
-from utilitis import NormalizeByChannelMeanStd
+from utils import NormalizeByChannelMeanStd
 
-from utilitis import *
+from utils import *
 from pruner import *
 from metrics import *
 
