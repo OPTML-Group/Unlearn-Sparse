@@ -48,4 +48,5 @@ def parse_args():
                         help='Class to forget')
     parser.add_argument('--indexes_to_replace', type=list, default=None,
                         help='Class to forget')
+
     return parser.parse_args()
