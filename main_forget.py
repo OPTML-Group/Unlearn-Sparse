@@ -23,6 +23,7 @@ import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import utils
+from trainer import validate, train
 from pruner import *
 
 import arg_parser
@@ -114,19 +115,19 @@ def main():
             current_mask = extract_mask(checkpoint)
             prune_model_custom(model, current_mask)
             check_sparsity(model)
-            test_tacc = validate(test_loader, model, criterion)
+            test_tacc = validate(test_loader, model, criterion, args)
             check_sparsity(model)        
             for epoch in range(0, args.epochs):
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
-                acc = train(retain_loader, model, criterion, optimizer, epoch)
+                acc = train(retain_loader, model, criterion, optimizer, epoch, args)
 
                 # evaluate on validation set
-                tacc = validate(val_loader, model, criterion)
+                tacc = validate(val_loader, model, criterion, args)
                 # evaluate on test set
-                test_tacc = validate(test_loader, model, criterion)
+                test_tacc = validate(test_loader, model, criterion, args)
                 # evaluate on forget set
-                f_tacc = validate(forget_loader, model, criterion)
+                f_tacc = validate(forget_loader, model, criterion, args)
                 scheduler.step()
 
                 all_result['retain_ta'].append(acc)
@@ -163,7 +164,7 @@ def main():
             prune_model_custom(model, current_mask)
             check_sparsity(model)
             model.load_state_dict(checkpoint, strict=False)
-            # test_tacc = validate(test_loader, model, criterion)
+            # test_tacc = validate(test_loader, model, criterion, args)
 
 
         if args.unlearn == "RL":
@@ -177,15 +178,15 @@ def main():
             for epoch in range(0, args.epochs):
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
-                tacc = validate(val_loader, model, criterion)
+                tacc = validate(val_loader, model, criterion, args)
                 acc = RL(forget_loader, model, criterion, optimizer, epoch)
 
                 # evaluate on validation set
-                tacc = validate(val_loader, model, criterion)
+                tacc = validate(val_loader, model, criterion, args)
                 # evaluate on test set
-                test_tacc = validate(test_loader, model, criterion)
+                test_tacc = validate(test_loader, model, criterion, args)
                 # evaluate on forget set
-                f_tacc = validate(retain_loader, model, criterion)
+                f_tacc = validate(retain_loader, model, criterion, args)
                 scheduler.step()
 
                 all_result['retain_ta'].append(f_tacc)
@@ -230,11 +231,11 @@ def main():
                 acc = GA(forget_loader, model, criterion, optimizer, epoch)
 
                 # evaluate on validation set
-                tacc = validate(val_loader, model, criterion)
+                tacc = validate(val_loader, model, criterion, args)
                 # evaluate on test set
-                test_tacc = validate(test_loader, model, criterion)
+                test_tacc = validate(test_loader, model, criterion, args)
                 # evaluate on retain set
-                f_tacc = validate(retain_loader, model, criterion)
+                f_tacc = validate(retain_loader, model, criterion, args)
                 scheduler.step()
 
                 all_result['retain_ta'].append(f_tacc)
@@ -269,55 +270,6 @@ def main():
 
 
         
-
-
-
-
-def train(train_loader, model, criterion, optimizer, epoch):
-    
-    losses = utils.AverageMeter()
-    top1 = utils.AverageMeter()
-
-    # switch to train mode
-    model.train()
-
-    start = time.time()
-    for i, (image, target) in enumerate(train_loader):
-
-        if epoch < args.warmup:
-            utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
-
-        image = image.cuda()
-        target = target.cuda()
-
-        # compute output
-        output_clean = model(image)
-        loss = criterion(output_clean, target)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        output = output_clean.float()
-        loss = loss.float()
-        # measure accuracy and record loss
-        prec1 = utils.accuracy(output.data, target)[0]
-
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            end = time.time()
-            print('Epoch: [{0}][{1}/{2}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})\t'
-                'Time {3:.2f}'.format(
-                    epoch, i, len(train_loader), end-start, loss=losses, top1=top1))
-            start = time.time()
-
-    print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
-
-    return top1.avg
 
 
 def GA(train_loader, model, criterion, optimizer, epoch):
@@ -414,44 +366,6 @@ def RL(train_loader, model, criterion, optimizer, epoch):
 
     return top1.avg
 
-def validate(val_loader, model, criterion):
-    """
-    Run evaluation
-    """
-    losses = utils.AverageMeter()
-    top1 = utils.AverageMeter()
-
-    # switch to evaluate mode
-    model.eval()
-
-    for i, (image, target) in enumerate(val_loader):
-        
-        image = image.cuda()
-        target = target.cuda()
-
-        # compute output
-        with torch.no_grad():
-            output = model(image)
-            loss = criterion(output, target)
-
-        output = output.float()
-        loss = loss.float()
-
-        # measure accuracy and record loss
-        prec1 = utils.accuracy(output.data, target)[0]
-        losses.update(loss.item(), image.size(0))
-        top1.update(prec1.item(), image.size(0))
-
-        if i % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    i, len(val_loader), loss=losses, top1=top1))
-
-    print('valid_accuracy {top1.avg:.3f}'
-        .format(top1=top1))
-
-    return top1.avg
 
 if __name__ == '__main__':
     main()
