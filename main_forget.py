@@ -37,13 +37,13 @@ def main():
     torch.cuda.set_device(int(args.gpu))
     os.makedirs(args.save_dir, exist_ok=True)
     if args.seed:
-        setup_seed(args.seed)
+        utilitis.setup_seed(args.seed)
     seed = args.seed
     # prepare dataset 
     model, train_loader_full, val_loader, test_loader, marked_loader = utilitis.setup_model_dataset(args)
     model.cuda()
     def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
-        setup_seed(seed)
+        utilitis.setup_seed(seed)
         loader_args = {'num_workers': 0, 'pin_memory': False}
         def _init_fn(worker_id):
             np.random.seed(int(seed))
@@ -137,7 +137,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                save_checkpoint({
+                utilitis.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -196,7 +196,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                save_checkpoint({
+                utilitis.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -245,7 +245,7 @@ def main():
                 is_best_sa = tacc  > best_sa
                 best_sa = max(tacc, best_sa)
 
-                save_checkpoint({
+                utilitis.save_checkpoint({
                     'state': 0,
                     'result': all_result,
                     'epoch': epoch + 1,
@@ -285,7 +285,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = target.cuda()
@@ -332,7 +332,7 @@ def GA(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = target.cuda()
@@ -379,7 +379,7 @@ def RL(train_loader, model, criterion, optimizer, epoch):
     for i, (image, target) in enumerate(train_loader):
 
         if epoch < args.warmup:
-            warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader))
+            utilitis.warmup_lr(epoch, i+1, optimizer, one_epoch_step=len(train_loader), args=args)
 
         image = image.cuda()
         target = torch.randint(0,9,target.shape)
@@ -453,32 +453,5 @@ def validate(val_loader, model, criterion):
 
     return top1.avg
 
-def save_checkpoint(state, is_SA_best, save_path, pruning, filename='checkpoint.pth.tar'):
-    filepath = os.path.join(save_path, str(pruning)+filename)
-    torch.save(state, filepath)
-    if is_SA_best:
-        shutil.copyfile(filepath, os.path.join(save_path, str(pruning)+'model_SA_best.pth.tar'))
-
-def warmup_lr(epoch, step, optimizer, one_epoch_step):
-
-    overall_steps = args.warmup*one_epoch_step
-    current_steps = epoch*one_epoch_step + step 
-
-    lr = args.lr * current_steps/overall_steps
-    lr = min(lr, args.lr)
-
-    for p in optimizer.param_groups:
-        p['lr']=lr
-
-def setup_seed(seed): 
-    print('setup random seed = {}'.format(seed))
-    torch.manual_seed(seed) 
-    torch.cuda.manual_seed_all(seed) 
-    np.random.seed(seed) 
-    random.seed(seed) 
-    torch.backends.cudnn.deterministic = True 
-
 if __name__ == '__main__':
     main()
-
-
