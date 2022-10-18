@@ -2,7 +2,7 @@ import time
 
 import utils
 
-def GA(train_loader, model, criterion, optimizer, epoch, args):
+def GA_iter(train_loader, model, criterion, optimizer, epoch, args):
     
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()

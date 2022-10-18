@@ -167,6 +167,7 @@ def main():
             model.load_state_dict(checkpoint, strict=False)
             # test_tacc = validate(test_loader, model, criterion, args)
 
+        unlearn_method = unlearn.get_unlearn_method_iter(args.unlearn)
 
         if args.unlearn == "RL":
             all_result = {}
@@ -179,8 +180,7 @@ def main():
             for epoch in range(0, args.epochs):
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
-                tacc = validate(val_loader, model, criterion, args)
-                acc = unlearn.RL(forget_loader, model, criterion, optimizer, epoch, args)
+                acc = unlearn_method(forget_loader, model, criterion, optimizer, epoch, args)
 
                 # evaluate on validation set
                 tacc = validate(val_loader, model, criterion, args)
@@ -229,7 +229,7 @@ def main():
             for epoch in range(0, args.epochs):
                 start_time = time.time()
                 print(optimizer.state_dict()['param_groups'][0]['lr'])
-                acc = unlearn.GA(forget_loader, model, criterion, optimizer, epoch, args)
+                acc = unlearn_method(forget_loader, model, criterion, optimizer, epoch, args)
 
                 # evaluate on validation set
                 tacc = validate(val_loader, model, criterion, args)

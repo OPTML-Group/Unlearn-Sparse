@@ -3,7 +3,7 @@ import time
 
 import utils
 
-def RL(train_loader, model, criterion, optimizer, epoch, args):
+def RL_iter(train_loader, model, criterion, optimizer, epoch, args):
     
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
