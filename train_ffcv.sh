@@ -1,11 +1,11 @@
 seed=1
 arch=resnet18
 rewind_epoch=8
-data=cifar10
+data=fast_cifar
 
-CUDA_VISIBLE_DEVICES=1 python -u main_imp.py \
+CUDA_VISIBLE_DEVICES=1 python -u main_imp_ffcv.py \
 	--data ./data \
-	--dataset "$data"_no_val \
+	--dataset "$data" \
 	--arch $arch \
 	--seed $seed \
 	--prune_type rewind_lt \
