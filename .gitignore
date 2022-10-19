@@ -1,0 +1,8 @@
+__pycache__
+
+*.log
+*.pt
+*.sh
+*.tar
+*.pkl
+*.bat
