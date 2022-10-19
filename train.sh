@@ -12,4 +12,6 @@ CUDA_VISIBLE_DEVICES=1 python -u main_imp.py \
 	--rewind_epoch $rewind_epoch \
 	--save_dir "imp_"$arch"_"$data"_seed"$seed"" \
 	--rate 0.2 \
-	--pruning_times 2
+	--pruning_times 2 \
+	--num_workers 8 \
+	--batch_size 512
