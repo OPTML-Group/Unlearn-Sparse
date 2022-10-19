@@ -1,8 +1,9 @@
 __pycache__
+tensorboard
 
 *.log
 *.pt
-*.sh
 *.tar
 *.pkl
 *.bat
+*.pth
