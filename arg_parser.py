@@ -43,10 +43,10 @@ def parse_args():
     ##################################### unlearn setting #################################################
     parser.add_argument('--unlearn', type=str, default='retrain', help='methods to unlearn')
     parser.add_argument('--num_indexes_to_replace', type=int, default=None,
-                        help='Number of samples of class to forget')
+                        help='Number of data to forget')
     parser.add_argument('--class_to_replace', type=int, default=0,
-                        help='Class to forget')
+                        help='Specific class to forget')
     parser.add_argument('--indexes_to_replace', type=list, default=None,
-                        help='Class to forget')
+                        help='Specific index data to forget')
     parser.add_argument('--alpha', default=0.2, type=float, help='unlearn noise')  # pruning rate is always 20%
     return parser.parse_args()
