@@ -61,6 +61,7 @@ def RL(forget_loader, retain_loader, test_loader, val_loader, model, criterion, 
     all_result['forget_ta'] = []
     start_epoch = 0
     start_state = 0
+    best_sa = 0
     for epoch in range(0, args.epochs):
         start_time = time.time()
         print(optimizer.state_dict()['param_groups'][0]['lr'])
