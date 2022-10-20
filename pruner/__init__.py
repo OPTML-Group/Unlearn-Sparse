@@ -1,1 +1,1 @@
-from pruner.pruner import *
+from .pruner import *

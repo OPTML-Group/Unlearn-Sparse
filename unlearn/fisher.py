@@ -5,13 +5,7 @@ import numpy as np
 from time import time
 from tqdm import tqdm
 
-
-
-
-
-
-
-def fisher_information_martix(model,train_dl,device):
+def fisher_information_martix(model, train_dl, device):
     fisher_approximation = []
     for parameter in model.parameters():
         fisher_approximation.append(torch.zeros_like(parameter).to(device))
@@ -35,8 +29,6 @@ def fisher_information_martix(model,train_dl,device):
         fisher_approximation[i] = fisher_approximation[i]/total
 
     return fisher_approximation
-
-
 
 def fisher(forget_loader, retain_loader, test_loader, val_loader, model, criterion, optimizer, scheduler, args):
     device = f"cuda:{int(args.gpu)}" if torch.cuda.is_available() else "cpu"

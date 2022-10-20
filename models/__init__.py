@@ -1,7 +1,7 @@
-from models.ResNet import *
-from models.ResNets import *
-from models.VGG import * 
-from models.VGG_LTH import *
+from .ResNet import *
+from .ResNets import *
+from .VGG import * 
+from .VGG_LTH import *
 
 model_dict = {
     'resnet18': resnet18,
