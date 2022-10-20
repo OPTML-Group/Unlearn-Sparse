@@ -1,5 +1,6 @@
 from .GA import GA
 from .RL import RL
+from .FT import FT
 from .fisher import fisher
 from .retrain import retrain
 
@@ -11,6 +12,8 @@ def get_unlearn_method(name):
         return RL
     elif name == "GA":
         return GA
+    elif name == "FT":
+        return FT
     elif name == "fisher":
         return fisher
     elif name == "retrain":
