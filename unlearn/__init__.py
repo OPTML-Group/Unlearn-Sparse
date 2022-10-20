@@ -4,7 +4,7 @@ from .fisher import fisher
 from .retrain import retrain
 
 def get_unlearn_method(name):
-    """ method usage: (TODO)
+    """ method usage:
     
     function(data_loaders, model, criterion, args)"""
     if name == "RL":

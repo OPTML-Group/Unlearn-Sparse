@@ -35,7 +35,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         losses.update(loss.item(), image.size(0))
         top1.update(prec1.item(), image.size(0))
 
-        if i % args.print_freq == 0:
+        if (i + 1) % args.print_freq == 0:
             end = time.time()
             print('Epoch: [{0}][{1}/{2}]\t'
                 'Loss {loss.val:.4f} ({loss.avg:.4f})\t'

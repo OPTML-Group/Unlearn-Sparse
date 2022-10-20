@@ -2,8 +2,9 @@ import torch
 import time
 import os
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 
-from trainer import train, validate
+from trainer import validate
 import utils
 
 def _iterative_unlearn_impl(unlearn_iter_func):
@@ -14,17 +15,17 @@ def _iterative_unlearn_impl(unlearn_iter_func):
                                     weight_decay=args.weight_decay)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1) # 0.1 is fixed
 
-        results = {name: [] for name in data_loaders.keys()}
-
+        results = OrderedDict((name, []) for name in data_loaders.keys())
         train_result = []
 
         for epoch in range(0, args.epochs):
             start_time = time.time()
-            print(optimizer.state_dict()['param_groups'][0]['lr'])
+            print("Epoch #{}, Learning rate: {}".format(epoch + 1, optimizer.state_dict()['param_groups'][0]['lr']))
             train_acc = unlearn_iter_func(data_loaders, model, criterion, optimizer, epoch, args)
             train_result.append(train_acc)
 
             for name, loader in data_loaders.items():
+                print(f"{name} acc:")
                 val_acc = validate(loader, model, criterion, args)
                 results[name].append(val_acc)
             scheduler.step()
@@ -57,6 +58,5 @@ def iterative_unlearn(func):
     
     @iterative_unlearn
 
-    def func(data_loaders, model, criterion, optimizer, epoch, args):
-        pass"""
+    def func(data_loaders, model, criterion, optimizer, epoch, args)"""
     return _iterative_unlearn_impl(func)

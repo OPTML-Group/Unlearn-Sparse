@@ -21,6 +21,7 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
+from collections import OrderedDict
 
 import utils
 from trainer import validate, train
@@ -64,10 +65,11 @@ def main():
     print(len(retain_dataset))
     assert(len(forget_dataset) + len(retain_dataset) == len(train_loader_full.dataset))
 
-    unlearn_data_loaders = {"retain": retain_loader,
-                            "forget": forget_loader,
-                            "val": val_loader,
-                            "test": test_loader}
+    unlearn_data_loaders = OrderedDict(
+        retain=retain_loader,
+        forget=forget_loader,
+        val=val_loader,
+        test=test_loader)
 
     criterion = nn.CrossEntropyLoss()
 
