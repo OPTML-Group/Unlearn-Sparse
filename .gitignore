@@ -7,3 +7,5 @@ tensorboard
 *.pkl
 *.bat
 *.pth
+*.png
+*.jpg
