@@ -3,7 +3,7 @@
 '''
 
 
-
+import time
 import os
 import copy 
 import torch
@@ -165,3 +165,25 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+
+def run_commands(gpus, commands, call = False, dir = "commands", shuffle = True, delay = 0.5):
+    random.shuffle(gpus)
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    if shuffle:
+        random.shuffle(commands)
+    os.makedirs(dir, exist_ok=True)
+    n_gpu = len(gpus)
+    for i, gpu in enumerate(gpus):
+        i_commands = commands[i::n_gpu]
+        prefix = "CUDA_VISIBLE_DEVICES={} ".format(gpu)
+        
+        sh_path = os.path.join(dir, "run{}.sh".format(i))
+        fout = open(sh_path, 'w')
+        for com in i_commands:
+            print(prefix + com, file = fout)
+        fout.close()
+        if call:
+            os.system("bash {}&".format(sh_path))
+        time.sleep(delay)
