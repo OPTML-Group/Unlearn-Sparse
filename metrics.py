@@ -5,6 +5,7 @@ from torch.autograd import grad
 from sklearn.svm import SVC
 from tqdm import tqdm
 import torch.nn.functional as F
+
 def entropy(p, dim = -1, keepdim = False):
     return -torch.where(p > 0, p * p.log(), p.new([0.0])).sum(dim=dim, keepdim=keepdim)
 
@@ -180,12 +181,11 @@ class black_box_benchmarks(object):
 
 
 
-def efficacy(model, forget_loader,device):
-    """Return forgetting score (efficacy)."""
-    information_target_data = information_score(model, forget_loader,device)
-    eff = torch.inf if information_target_data == 0 else 1. / information_target_data
-    return eff.item()
-
+def gradient_norm(model):
+    """Compute norm of gradient vector w.r.t. the model parameters."""
+    gradient = torch.concat([p.grad.data.flatten() for p in model.parameters()])
+    norm = torch.linalg.norm(gradient).tolist()
+    return norm
 
 def efficacy_upper_bound(model, x, y, logistic_regression=False):
     """Return upper bound for forgetting score (efficacy)."""
@@ -198,7 +198,6 @@ def efficacy_upper_bound(model, x, y, logistic_regression=False):
     loss.backward()
     squared_norm = gradient_norm(model) ** 2
     return torch.inf if squared_norm == 0 else 1. / squared_norm
-
 
 def information_score(model, forget_loader,device, training=False):
     """
@@ -223,3 +222,11 @@ def information_score(model, forget_loader,device, training=False):
     information = information / total
     # return averaged information score
     return information
+
+def efficacy(model, forget_loader,device):
+    """Return forgetting score (efficacy)."""
+    information_target_data = information_score(model, forget_loader,device)
+    eff = torch.inf if information_target_data == 0 else 1. / information_target_data
+    return eff.item()
+
+

@@ -20,7 +20,7 @@ def _iterative_unlearn_impl(unlearn_iter_func):
 
         for epoch in range(0, args.epochs):
             start_time = time.time()
-            print("Epoch #{}, Learning rate: {}".format(epoch + 1, optimizer.state_dict()['param_groups'][0]['lr']))
+            print("Epoch #{}, Learning rate: {}".format(epoch, optimizer.state_dict()['param_groups'][0]['lr']))
             train_acc = unlearn_iter_func(data_loaders, model, criterion, optimizer, epoch, args)
             train_result.append(train_acc)
 

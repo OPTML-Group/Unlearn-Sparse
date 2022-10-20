@@ -2,31 +2,18 @@
     main process for a Lottery Tickets experiments
 '''
 import os
-import pdb
-import time 
-import pickle
-import random
-import shutil
-import numpy as np  
-from copy import deepcopy
-import matplotlib.pyplot as plt
+import numpy as np
 import copy
 import torch
 import torch.optim
 import torch.nn as nn
 import torch.utils.data
-import torch.nn.functional as F
-import torchvision.models as models
-import torch.backends.cudnn as cudnn
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-from torch.utils.data.sampler import SubsetRandomSampler
 from collections import OrderedDict
 
 import utils
-from trainer import validate, train
 import unlearn
 from pruner import *
+from metrics import efficacy, MIA
 
 import arg_parser
 
@@ -34,9 +21,13 @@ best_sa = 0
 
 def main():
     args = arg_parser.parse_args()
-    print(args)
 
-    torch.cuda.set_device(int(args.gpu))
+    if torch.cuda.is_available():
+        torch.cuda.set_device(int(args.gpu))
+        device = torch.device(f"cuda:{int(args.gpu)}")
+    else:
+        device = torch.device("cpu")
+
     os.makedirs(args.save_dir, exist_ok=True)
     if args.seed:
         utils.setup_seed(args.seed)
@@ -75,7 +66,7 @@ def main():
 
     if args.resume:
         print('resume from checkpoint {}'.format(args.checkpoint))
-        checkpoint = torch.load(args.checkpoint, map_location = torch.device('cuda:'+str(args.gpu)))
+        checkpoint = torch.load(args.checkpoint, map_location = device)
         # best_sa = checkpoint['best_sa']
         # start_epoch = checkpoint['epoch']
         # all_result = checkpoint['result']
@@ -104,7 +95,7 @@ def main():
         # print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
 
     else:
-        checkpoint = torch.load(args.mask, map_location = torch.device('cuda:'+str(args.gpu)))
+        checkpoint = torch.load(args.mask, map_location = device)
         current_mask = extract_mask(checkpoint)
         prune_model_custom(model, current_mask)
         check_sparsity(model)
@@ -115,6 +106,17 @@ def main():
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
 
         unlearn_method(unlearn_data_loaders, model, criterion, args)
+
+    forget_len = len(forget_dataset)
+    retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
+    retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
+    retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    print(len(retain_dataset_train))
+    print(len(retain_dataset_test))
+    MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model)
+
+    print(efficacy(model,forget_loader, device))
 
 if __name__ == '__main__':
     main()

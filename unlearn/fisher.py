@@ -41,9 +41,3 @@ def fisher(data_loaders, model, criterion, args):
 
         parameter.data = parameter.data + noise
     return model
-
-def gradient_norm(model):
-    """Compute norm of gradient vector w.r.t. the model parameters."""
-    gradient = torch.concat([p.grad.data.flatten() for p in model.parameters()])
-    norm = torch.linalg.norm(gradient).tolist()
-    return norm
