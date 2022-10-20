@@ -32,7 +32,6 @@ import arg_parser
 best_sa = 0
 
 def main():
-    global args, best_sa
     args = arg_parser.parse_args()
     print(args)
 
@@ -65,56 +64,55 @@ def main():
     print(len(retain_dataset))
     assert(len(forget_dataset) + len(retain_dataset) == len(train_loader_full.dataset))
 
-    criterion = nn.CrossEntropyLoss()
-    decreasing_lr = list(map(int, args.decreasing_lr.split(',')))
+    unlearn_data_loaders = {"retain": retain_loader,
+                            "forget": forget_loader,
+                            "val": val_loader,
+                            "test": test_loader}
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1) # 0.1 is fixed
+    criterion = nn.CrossEntropyLoss()
 
     if args.resume:
         print('resume from checkpoint {}'.format(args.checkpoint))
         checkpoint = torch.load(args.checkpoint, map_location = torch.device('cuda:'+str(args.gpu)))
-        best_sa = checkpoint['best_sa']
-        start_epoch = checkpoint['epoch']
-        all_result = checkpoint['result']
-        start_state = checkpoint['state']
+        # best_sa = checkpoint['best_sa']
+        # start_epoch = checkpoint['epoch']
+        # all_result = checkpoint['result']
+        # start_state = checkpoint['state']
 
-        if start_state > 0:
-            current_mask = extract_mask(checkpoint['state_dict'])
-            prune_model_custom(model, current_mask)
-            check_sparsity(model)
-            optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                        momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
+        # if start_state > 0:
+        #     current_mask = extract_mask(checkpoint['state_dict'])
+        #     prune_model_custom(model, current_mask)
+        #     check_sparsity(model)
+        #     optimizer = torch.optim.SGD(model.parameters(), args.lr,
+        #                                 momentum=args.momentum,
+        #                                 weight_decay=args.weight_decay)
+        #     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
 
-        model.load_state_dict(checkpoint['state_dict'], strict=False)
-        # adding an extra forward process to enable the masks
-        x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
-        model.eval()
-        with torch.no_grad():
-            model(x_rand)
+        # model.load_state_dict(checkpoint['state_dict'], strict=False)
+        # # adding an extra forward process to enable the masks
+        # x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
+        # model.eval()
+        # with torch.no_grad():
+        #     model(x_rand)
 
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        scheduler.load_state_dict(checkpoint['scheduler'])
-        initalization = checkpoint['init_weight']
-        print('loading state:', start_state)
-        print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
+        # optimizer.load_state_dict(checkpoint['optimizer'])
+        # scheduler.load_state_dict(checkpoint['scheduler'])
+        # initalization = checkpoint['init_weight']
+        # print('loading state:', start_state)
+        # print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
 
     else:
+        checkpoint = torch.load(args.mask, map_location = torch.device('cuda:'+str(args.gpu)))
+        current_mask = extract_mask(checkpoint)
+        prune_model_custom(model, current_mask)
+        check_sparsity(model)
+
         if args.unlearn != "retrain":
-            checkpoint = torch.load(args.mask, map_location = torch.device('cuda:'+str(args.gpu)))
-            current_mask = extract_mask(checkpoint)
-            prune_model_custom(model, current_mask)
-            check_sparsity(model)
             model.load_state_dict(checkpoint, strict=False)
-            # test_tacc = validate(test_loader, model, criterion, args)
 
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
 
-        unlearn_method(forget_loader, retain_loader, test_loader, val_loader, model, criterion, optimizer, scheduler, args)
+        unlearn_method(unlearn_data_loaders, model, criterion, args)
 
 if __name__ == '__main__':
     main()

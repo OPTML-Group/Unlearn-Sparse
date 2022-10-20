@@ -4,8 +4,9 @@ from .fisher import fisher
 from .retrain import retrain
 
 def get_unlearn_method(name):
-    # method usage: (TODO)
-    #   function(forget_loader, retain_loader, test_loader, val_loader, model, criterion, optimizer, scheduler, args)
+    """ method usage: (TODO)
+    
+    function(data_loaders, model, criterion, args)"""
     if name == "RL":
         return RL
     elif name == "GA":

@@ -1,12 +1,12 @@
 import torch
 import time
-import matplotlib.pyplot as plt
-import os
 
-from trainer import validate
 import utils
+from .impl import iterative_unlearn
 
-def RL_iter(train_loader, model, criterion, optimizer, epoch, args):
+@iterative_unlearn
+def RL(data_loaders, model, criterion, optimizer, epoch, args):
+    train_loader = data_loaders["forget"]
     
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
@@ -52,54 +52,3 @@ def RL_iter(train_loader, model, criterion, optimizer, epoch, args):
     print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
 
     return top1.avg
-
-def RL(forget_loader, retain_loader, test_loader, val_loader, model, criterion, optimizer, scheduler, args):
-    all_result = {}
-    all_result['retain_ta'] = []
-    all_result['test_ta'] = []
-    all_result['val_ta'] = []
-    all_result['forget_ta'] = []
-    start_epoch = 0
-    start_state = 0
-    best_sa = 0
-    for epoch in range(0, args.epochs):
-        start_time = time.time()
-        print(optimizer.state_dict()['param_groups'][0]['lr'])
-        acc = RL_iter(forget_loader, model, criterion, optimizer, epoch, args)
-
-        # evaluate on validation set
-        tacc = validate(val_loader, model, criterion, args)
-        # evaluate on test set
-        test_tacc = validate(test_loader, model, criterion, args)
-        # evaluate on forget set
-        f_tacc = validate(retain_loader, model, criterion, args)
-        scheduler.step()
-
-        all_result['retain_ta'].append(f_tacc)
-        all_result['test_ta'].append(tacc)
-        all_result['val_ta'].append(test_tacc)
-        all_result['forget_ta'].append(acc)
-        # remember best prec@1 and save checkpoint
-        is_best_sa = tacc  > best_sa
-        best_sa = max(tacc, best_sa)
-
-        utils.save_checkpoint({
-            'state': 0,
-            'result': all_result,
-            'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
-            'best_sa': best_sa,
-            'optimizer': optimizer.state_dict(),
-            'scheduler': scheduler.state_dict(),
-            'init_weight': None
-        }, is_SA_best=is_best_sa, pruning=0, save_path=args.save_dir)
-
-        # plot training curve
-        plt.plot(all_result['retain_ta'], label='train_acc')
-        plt.plot(all_result['val_ta'], label='val_acc')
-        plt.plot(all_result['test_ta'], label='test_acc')
-        plt.plot(all_result['forget_ta'], label='forget_acc')
-        plt.legend()
-        plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
-        plt.close()
-        print("one epoch duration:{}".format(time.time()-start_time))

@@ -23,14 +23,16 @@ def fisher_information_martix(model, train_dl, device):
             prediction = predictions[i][label_i]
             gradient = grad(prediction, model.parameters(), retain_graph=True, create_graph=False)
             for j, derivative in enumerate(gradient):
-                fisher_approximation[j] += (derivative + epsilon)**2
+                fisher_approximation[j] += (derivative + epsilon) ** 2
         total += real_batch
     for i, parameter in enumerate(model.parameters()):
-        fisher_approximation[i] = fisher_approximation[i]/total
+        fisher_approximation[i] = fisher_approximation[i] / total
 
     return fisher_approximation
 
-def fisher(forget_loader, retain_loader, test_loader, val_loader, model, criterion, optimizer, scheduler, args):
+def fisher(data_loaders, model, criterion, args):
+    retain_loader = data_loaders["retain"]
+
     device = f"cuda:{int(args.gpu)}" if torch.cuda.is_available() else "cpu"
     fisher_approximation = fisher_information_martix(model,retain_loader,device)
     for i, parameter in enumerate(model.parameters()):
@@ -39,11 +41,6 @@ def fisher(forget_loader, retain_loader, test_loader, val_loader, model, criteri
 
         parameter.data = parameter.data + noise
     return model
-
-
-
-
-
 
 def gradient_norm(model):
     """Compute norm of gradient vector w.r.t. the model parameters."""
