@@ -28,8 +28,8 @@ def save_unlearn_checkpoint(model, evaluation_result, args):
 
 def load_unlearn_checkpoint(model, device, args):
     checkpoint = utils.load_checkpoint(device, args.save_dir, args.unlearn)
-    if checkpoint is None:
-        return model, None, None
+    if checkpoint is None or checkpoint.get('state_dict') is None:
+        return None
 
     current_mask = pruner.extract_mask(checkpoint['state_dict'])
     pruner.prune_model_custom(model, current_mask)
@@ -43,7 +43,7 @@ def load_unlearn_checkpoint(model, device, args):
     with torch.no_grad():
         model(x_rand)
 
-    evaluation_result = checkpoint['evaluation_result']
+    evaluation_result = checkpoint.get('evaluation_result')
     return model, evaluation_result
 
 
