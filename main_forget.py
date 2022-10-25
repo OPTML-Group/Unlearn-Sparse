@@ -14,6 +14,7 @@ import utils
 import unlearn
 from pruner import *
 from metrics import efficacy, MIA
+from trainer import validate
 
 import arg_parser
 
@@ -35,24 +36,21 @@ def main():
     # prepare dataset 
     model, train_loader_full, val_loader, test_loader, marked_loader = utils.setup_model_dataset(args)
     model.cuda()
-    def replace_loader_dataset(data_loader, dataset, batch_size=args.batch_size, seed=1, shuffle=True):
+    def replace_loader_dataset(dataset, batch_size=args.batch_size, seed=1, shuffle=True):
         utils.setup_seed(seed)
-        loader_args = {'num_workers': 0, 'pin_memory': False}
-        def _init_fn(worker_id):
-            np.random.seed(int(seed))
         return torch.utils.data.DataLoader(dataset, batch_size=batch_size,num_workers=0,pin_memory=True,shuffle=shuffle)
 
     forget_dataset = copy.deepcopy(marked_loader.dataset)
     marked = forget_dataset.targets < 0
     forget_dataset.data = forget_dataset.data[marked]
     forget_dataset.targets = - forget_dataset.targets[marked] - 1
-    forget_loader = replace_loader_dataset(train_loader_full, forget_dataset, seed=seed, shuffle=True)
+    forget_loader = replace_loader_dataset(forget_dataset, seed=seed, shuffle=True)
     print(len(forget_dataset))
     retain_dataset = copy.deepcopy(marked_loader.dataset)
     marked = retain_dataset.targets >= 0
     retain_dataset.data = retain_dataset.data[marked]
     retain_dataset.targets = retain_dataset.targets[marked]
-    retain_loader = replace_loader_dataset(train_loader_full, retain_dataset, seed=seed, shuffle=True)
+    retain_loader = replace_loader_dataset(retain_dataset, seed=seed, shuffle=True)
     print(len(retain_dataset))
     assert(len(forget_dataset) + len(retain_dataset) == len(train_loader_full.dataset))
 
@@ -67,32 +65,29 @@ def main():
     if args.resume:
         print('resume from checkpoint {}'.format(args.checkpoint))
         checkpoint = torch.load(args.checkpoint, map_location = device)
-        # best_sa = checkpoint['best_sa']
-        # start_epoch = checkpoint['epoch']
-        # all_result = checkpoint['result']
-        # start_state = checkpoint['state']
+        start_epoch = checkpoint['epoch']
+        start_state = checkpoint['state']
 
-        # if start_state > 0:
-        #     current_mask = extract_mask(checkpoint['state_dict'])
-        #     prune_model_custom(model, current_mask)
-        #     check_sparsity(model)
-        #     optimizer = torch.optim.SGD(model.parameters(), args.lr,
-        #                                 momentum=args.momentum,
-        #                                 weight_decay=args.weight_decay)
-        #     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
+        if start_state > 0:
+            current_mask = extract_mask(checkpoint['state_dict'])
+            prune_model_custom(model, current_mask)
+            check_sparsity(model)
+            optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                        momentum=args.momentum,
+                                        weight_decay=args.weight_decay)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
 
-        # model.load_state_dict(checkpoint['state_dict'], strict=False)
-        # # adding an extra forward process to enable the masks
-        # x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
-        # model.eval()
-        # with torch.no_grad():
-        #     model(x_rand)
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        # adding an extra forward process to enable the masks
+        x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
+        model.eval()
+        with torch.no_grad():
+            model(x_rand)
 
-        # optimizer.load_state_dict(checkpoint['optimizer'])
-        # scheduler.load_state_dict(checkpoint['scheduler'])
-        # initalization = checkpoint['init_weight']
-        # print('loading state:', start_state)
-        # print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
+        print('loading state:', start_state)
+        print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
 
     else:
         checkpoint = torch.load(args.mask, map_location = device)
@@ -106,6 +101,10 @@ def main():
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
 
         unlearn_method(unlearn_data_loaders, model, criterion, args)
+    
+    for name, loader in unlearn_data_loaders.items():
+        val_acc = validate(loader, model, criterion, args)
+        print(f"{name} acc: {val_acc}")
 
     forget_len = len(forget_dataset)
     retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
