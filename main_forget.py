@@ -9,8 +9,9 @@ from collections import OrderedDict
 import utils
 import unlearn
 import pruner
-from metrics import efficacy, MIA
+from metrics import efficacy
 from trainer import validate
+import evaluation
 
 import arg_parser
 
@@ -58,7 +59,7 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
 
-    checkpoint = None
+    evaluation_result = None
 
     if args.resume:
         checkpoint = unlearn.load_unlearn_checkpoint(model, device, args)
@@ -79,21 +80,42 @@ def main():
         unlearn_method(unlearn_data_loaders, model, criterion, args)
         unlearn.save_unlearn_checkpoint(model, None, args)
     
-    for name, loader in unlearn_data_loaders.items():
-        val_acc = validate(loader, model, criterion, args)
-        print(f"{name} acc: {val_acc}")
+    if evaluation_result is None:
+        evaluation_result = {}
 
-    forget_len = len(forget_dataset)
-    retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
-    retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
-    retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-    retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-    print(len(retain_dataset_train))
-    print(len(retain_dataset_test))
+    if 'accuracy' not in evaluation_result:
+        accuracy = {}
+        for name, loader in unlearn_data_loaders.items():
+            utils.dataset_convert_to_test(loader.dataset)
+            val_acc = validate(loader, model, criterion, args)
+            accuracy[name] = val_acc
+            print(f"{name} acc: {val_acc}")
+        
+        evaluation_result['accuracy'] = accuracy
+        unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
-    MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model)
+    if 'MIA' not in evaluation_result:
+        forget_len = len(forget_dataset)
 
-    print(efficacy(model,forget_loader, device))
+        utils.dataset_convert_to_test(retain_dataset)
+        utils.dataset_convert_to_test(forget_loader)
+        utils.dataset_convert_to_test(test_loader)
+        retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
+        retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
+        retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, shuffle=False)
+        retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, shuffle=False)
+
+        print(len(retain_dataset_train))
+        print(len(retain_dataset_test))
+
+        evaluation_result['MIA'] = evaluation.MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model, device)
+        unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
+
+    if 'efficacy' not in evaluation_result:
+        utils.dataset_convert_to_test(forget_loader.dataset)
+        evaluation_result['efficacy'] = efficacy(model,forget_loader, device)
+        print(efficacy(model,forget_loader, device))
+        unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
 if __name__ == '__main__':
     main()

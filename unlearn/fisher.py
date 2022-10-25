@@ -3,6 +3,7 @@ from torch.autograd import grad
 from tqdm import tqdm
 
 def fisher_information_martix(model, train_dl, device):
+    model.eval()
     fisher_approximation = []
     for parameter in model.parameters():
         fisher_approximation.append(torch.zeros_like(parameter).to(device))
@@ -14,7 +15,6 @@ def fisher_information_martix(model, train_dl, device):
         real_batch = data.shape[0]
 
         epsilon = 1e-7
-        model.train()
         for i in range(real_batch):
             label_i = label[i]
             prediction = predictions[i][label_i]

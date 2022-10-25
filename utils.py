@@ -14,6 +14,7 @@ import shutil
 from models import *
 from dataset import *
 import random
+from torchvision import transforms
 
 __all__ = ['setup_model_dataset','AverageMeter','warmup_lr','save_checkpoint','setup_seed', 'accuracy']
 
@@ -37,6 +38,7 @@ def save_checkpoint(state, is_SA_best, save_path, pruning, filename='checkpoint.
 def load_checkpoint(device, save_path, pruning, filename='checkpoint.pth.tar'):
     filepath = os.path.join(save_path, str(pruning)+filename)
     if os.path.exists(filepath):
+        print("Load checkpoint from:{}".format(filepath))
         return torch.load(filepath, device)
     print("Checkpoint not found! path:{}".format(filepath))
     return None
@@ -57,6 +59,15 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+def dataset_convert_to_test(dataset):
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    while hasattr(dataset, "dataset"):
+        dataset = dataset.dataset
+    dataset.transform = test_transform
+    dataset.train = False
 
 def setup_model_dataset(args):
 
