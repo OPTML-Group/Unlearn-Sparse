@@ -223,4 +223,4 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
         fout.close()
         if call:
             os.system("bash {}&".format(sh_path))
-        time.sleep(delay)
+            time.sleep(delay)
