@@ -1,6 +1,7 @@
 from trainer import train
 from .impl import iterative_unlearn
 
+
 @iterative_unlearn
 def retrain(data_loaders, model, criterion, optimizer, epoch, args):
     retain_loader = data_loaders["retain"]

@@ -3,12 +3,12 @@
 '''
 import os
 import pdb
-import time 
+import time
 import pickle
 import random
 import shutil
 import argparse
-import numpy as np  
+import numpy as np
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
@@ -31,6 +31,7 @@ import arg_parser
 
 best_sa = 0
 
+
 def main():
     global args, best_sa
     args = arg_parser.parse_args()
@@ -41,7 +42,7 @@ def main():
     if args.seed:
         setup_seed(args.seed)
 
-    # prepare dataset 
+    # prepare dataset
     model, train_loader, val_loader, test_loader = setup_model_dataset(args)
     model.cuda()
 
@@ -63,28 +64,31 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1) # 0.1 is fixed
-    
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
+
     if args.resume:
         print('resume from checkpoint {}'.format(args.checkpoint))
-        checkpoint = torch.load(args.checkpoint, map_location = torch.device('cuda:'+str(args.gpu)))
+        checkpoint = torch.load(
+            args.checkpoint, map_location=torch.device('cuda:'+str(args.gpu)))
         best_sa = checkpoint['best_sa']
         start_epoch = checkpoint['epoch']
         all_result = checkpoint['result']
         start_state = checkpoint['state']
 
-        if start_state>0:
+        if start_state > 0:
             current_mask = extract_mask(checkpoint['state_dict'])
             prune_model_custom(model, current_mask)
             check_sparsity(model)
             optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                         momentum=args.momentum,
                                         weight_decay=args.weight_decay)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=decreasing_lr, gamma=0.1)
 
         model.load_state_dict(checkpoint['state_dict'], strict=False)
         # adding an extra forward process to enable the masks
-        x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
+        x_rand = torch.rand(1, 3, args.input_size, args.input_size).cuda()
         model.eval()
         with torch.no_grad():
             model(x_rand)
@@ -93,7 +97,7 @@ def main():
         scheduler.load_state_dict(checkpoint['scheduler'])
         initalization = checkpoint['init_weight']
         print('loading state:', start_state)
-        print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
+        print('loading from epoch: ', start_epoch, 'best_sa=', best_sa)
 
     else:
         all_result = {}
@@ -105,14 +109,14 @@ def main():
         start_state = 0
 
     print('######################################## Start Standard Training Iterative Pruning ########################################')
-    
+
     for state in range(start_state, args.pruning_times):
 
         print('******************************************')
         print('pruning state', state)
         print('******************************************')
-        
-        check_sparsity(model)        
+
+        check_sparsity(model)
         for epoch in range(start_epoch, args.epochs):
             start_time = time.time()
             print(optimizer.state_dict()['param_groups'][0]['lr'])
@@ -120,7 +124,8 @@ def main():
 
             if state == 0:
                 if (epoch+1) == args.rewind_epoch:
-                    torch.save(model.state_dict(), os.path.join(args.save_dir, 'epoch_{}_rewind_weight.pt'.format(epoch+1)))
+                    torch.save(model.state_dict(), os.path.join(
+                        args.save_dir, 'epoch_{}_rewind_weight.pt'.format(epoch+1)))
                     if args.prune_type == 'rewind_lt':
                         initalization = deepcopy(model.state_dict())
 
@@ -136,7 +141,7 @@ def main():
             all_result['test_ta'].append(test_tacc)
 
             # remember best prec@1 and save checkpoint
-            is_best_sa = tacc  > best_sa
+            is_best_sa = tacc > best_sa
             best_sa = max(tacc, best_sa)
 
             save_checkpoint({
@@ -155,17 +160,19 @@ def main():
             plt.plot(all_result['val_ta'], label='val_acc')
             plt.plot(all_result['test_ta'], label='test_acc')
             plt.legend()
-            plt.savefig(os.path.join(args.save_dir, str(state)+'net_train.png'))
+            plt.savefig(os.path.join(args.save_dir,
+                        str(state)+'net_train.png'))
             plt.close()
             print("one epoch duration:{}".format(time.time()-start_time))
 
-        #report result
+        # report result
         check_sparsity(model)
         print("Performance on the test data set")
         test_tacc = validate(test_loader, model, criterion, args)
-        if len(all_result['val_ta'])!=0:
+        if len(all_result['val_ta']) != 0:
             val_pick_best_epoch = np.argmax(np.array(all_result['val_ta']))
-            print('* best SA = {}, Epoch = {}'.format(all_result['test_ta'][val_pick_best_epoch], val_pick_best_epoch+1))
+            print('* best SA = {}, Epoch = {}'.format(
+                all_result['test_ta'][val_pick_best_epoch], val_pick_best_epoch+1))
 
         all_result = {}
         all_result['train_ta'] = []
@@ -176,9 +183,10 @@ def main():
 
         if args.prune_type == 'pt':
             print('* loading pretrained weight')
-            initalization = torch.load(os.path.join(args.save_dir, '0model_SA_best.pth.tar'), map_location = torch.device('cuda:'+str(args.gpu)))['state_dict']
+            initalization = torch.load(os.path.join(
+                args.save_dir, '0model_SA_best.pth.tar'), map_location=torch.device('cuda:'+str(args.gpu)))['state_dict']
 
-        #pruning and rewind 
+        #pruning and rewind
         if args.random_prune:
             print('random pruning')
             pruning_model_random(model, args.rate)
@@ -187,27 +195,23 @@ def main():
             pruning_model(model, args.rate)
 
         remain_weight = check_sparsity(model)
-        current_mask = extract_mask(model.state_dict()) 
+        current_mask = extract_mask(model.state_dict())
         remove_prune(model)
 
         # weight rewinding
-        model.load_state_dict(initalization, strict=False) # rewind, initialization is a full model architecture without masks
+        # rewind, initialization is a full model architecture without masks
+        model.load_state_dict(initalization, strict=False)
         prune_model_custom(model, current_mask)
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=decreasing_lr, gamma=0.1)
         if args.rewind_epoch:
-            # learning rate rewinding 
+            # learning rate rewinding
             for _ in range(args.rewind_epoch):
                 scheduler.step()
 
 
-
-
-
-
 if __name__ == '__main__':
     main()
-
-

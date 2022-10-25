@@ -17,6 +17,7 @@ import arg_parser
 
 best_sa = 0
 
+
 def main():
     args = arg_parser.parse_args()
 
@@ -31,25 +32,30 @@ def main():
         utils.setup_seed(args.seed)
     seed = args.seed
     # prepare dataset
-    model, train_loader_full, val_loader, test_loader, marked_loader = utils.setup_model_dataset(args)
+    model, train_loader_full, val_loader, test_loader, marked_loader = utils.setup_model_dataset(
+        args)
     model.cuda()
+
     def replace_loader_dataset(dataset, batch_size=args.batch_size, seed=1, shuffle=True):
         utils.setup_seed(seed)
-        return torch.utils.data.DataLoader(dataset, batch_size=batch_size,num_workers=0,pin_memory=True,shuffle=shuffle)
+        return torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=0, pin_memory=True, shuffle=shuffle)
 
     forget_dataset = copy.deepcopy(marked_loader.dataset)
     marked = forget_dataset.targets < 0
     forget_dataset.data = forget_dataset.data[marked]
     forget_dataset.targets = - forget_dataset.targets[marked] - 1
-    forget_loader = replace_loader_dataset(forget_dataset, seed=seed, shuffle=True)
+    forget_loader = replace_loader_dataset(
+        forget_dataset, seed=seed, shuffle=True)
     print(len(forget_dataset))
     retain_dataset = copy.deepcopy(marked_loader.dataset)
     marked = retain_dataset.targets >= 0
     retain_dataset.data = retain_dataset.data[marked]
     retain_dataset.targets = retain_dataset.targets[marked]
-    retain_loader = replace_loader_dataset(retain_dataset, seed=seed, shuffle=True)
+    retain_loader = replace_loader_dataset(
+        retain_dataset, seed=seed, shuffle=True)
     print(len(retain_dataset))
-    assert(len(forget_dataset) + len(retain_dataset) == len(train_loader_full.dataset))
+    assert(len(forget_dataset) + len(retain_dataset)
+           == len(train_loader_full.dataset))
 
     unlearn_data_loaders = OrderedDict(
         retain=retain_loader,
@@ -67,7 +73,7 @@ def main():
     if args.resume and checkpoint is not None:
         model, evaluation_result = checkpoint
     else:
-        checkpoint = torch.load(args.mask, map_location = device)
+        checkpoint = torch.load(args.mask, map_location=device)
         current_mask = pruner.extract_mask(checkpoint)
         pruner.prune_model_custom(model, current_mask)
         pruner.check_sparsity(model)
@@ -79,7 +85,7 @@ def main():
 
         unlearn_method(unlearn_data_loaders, model, criterion, args)
         unlearn.save_unlearn_checkpoint(model, None, args)
-    
+
     if evaluation_result is None:
         evaluation_result = {}
 
@@ -90,7 +96,7 @@ def main():
             val_acc = validate(loader, model, criterion, args)
             accuracy[name] = val_acc
             print(f"{name} acc: {val_acc}")
-        
+
         evaluation_result['accuracy'] = accuracy
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
@@ -100,22 +106,28 @@ def main():
         utils.dataset_convert_to_test(retain_dataset)
         utils.dataset_convert_to_test(forget_loader)
         utils.dataset_convert_to_test(test_loader)
-        retain_dataset_train = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len)))
-        retain_dataset_test = torch.utils.data.Subset(retain_dataset,list(range(len(retain_dataset)-forget_len,len(retain_dataset))))
-        retain_loader_train = torch.utils.data.DataLoader(retain_dataset_train,batch_size=args.batch_size, shuffle=False)
-        retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, shuffle=False)
+        retain_dataset_train = torch.utils.data.Subset(
+            retain_dataset, list(range(len(retain_dataset)-forget_len)))
+        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(
+            range(len(retain_dataset)-forget_len, len(retain_dataset))))
+        retain_loader_train = torch.utils.data.DataLoader(
+            retain_dataset_train, batch_size=args.batch_size, shuffle=False)
+        retain_loader_test = torch.utils.data.DataLoader(
+            retain_dataset_test, batch_size=args.batch_size, shuffle=False)
 
         print(len(retain_dataset_train))
         print(len(retain_dataset_test))
 
-        evaluation_result['MIA'] = evaluation.MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model, device)
+        evaluation_result['MIA'] = evaluation.MIA(
+            retain_loader_train, retain_loader_test, forget_loader, test_loader, model, device)
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
     if 'efficacy' not in evaluation_result:
         utils.dataset_convert_to_test(forget_loader.dataset)
-        evaluation_result['efficacy'] = efficacy(model,forget_loader, device)
-        print(efficacy(model,forget_loader, device))
+        evaluation_result['efficacy'] = efficacy(model, forget_loader, device)
+        print(efficacy(model, forget_loader, device))
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
+
 
 if __name__ == '__main__':
     main()

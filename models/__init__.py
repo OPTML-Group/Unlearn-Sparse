@@ -1,6 +1,6 @@
 from .ResNet import *
 from .ResNets import *
-from .VGG import * 
+from .VGG import *
 from .VGG_LTH import *
 
 model_dict = {

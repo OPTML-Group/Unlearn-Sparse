@@ -1,7 +1,6 @@
-import torch 
+import torch
 import torch.nn as nn
 # from torchvision.models.utils import load_state_dict_from_url
-
 
 
 __all__ = [
@@ -77,7 +76,8 @@ class VGG(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
@@ -95,7 +95,8 @@ def make_layers(cfg, batch_norm=False):
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1, bias=False)
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3,
+                               padding=1, bias=False)
             if batch_norm:
                 layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
             else:
@@ -118,7 +119,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, progress, **kwargs):
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch],
-                                            progress=progress)
+                                              progress=progress)
         model.load_state_dict(state_dict)
     return model
 
@@ -134,7 +135,6 @@ def vgg11(pretrained=False, progress=True, **kwargs):
     return _vgg('vgg11', 'A', False, pretrained, progress, **kwargs)
 
 
-
 def vgg11_bn(pretrained=False, progress=True, **kwargs):
     r"""VGG 11-layer model (configuration "A") with batch normalization
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
@@ -144,7 +144,6 @@ def vgg11_bn(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg11_bn', 'A', True, pretrained, progress, **kwargs)
-
 
 
 def vgg13(pretrained=False, progress=True, **kwargs):
@@ -158,7 +157,6 @@ def vgg13(pretrained=False, progress=True, **kwargs):
     return _vgg('vgg13', 'B', False, pretrained, progress, **kwargs)
 
 
-
 def vgg13_bn(pretrained=False, progress=True, **kwargs):
     r"""VGG 13-layer model (configuration "B") with batch normalization
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
@@ -168,7 +166,6 @@ def vgg13_bn(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg13_bn', 'B', True, pretrained, progress, **kwargs)
-
 
 
 def vgg16(pretrained=False, progress=True, **kwargs):
@@ -182,7 +179,6 @@ def vgg16(pretrained=False, progress=True, **kwargs):
     return _vgg('vgg16', 'D', False, pretrained, progress, **kwargs)
 
 
-
 def vgg16_bn(pretrained=False, progress=True, **kwargs):
     r"""VGG 16-layer model (configuration "D") with batch normalization
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
@@ -194,7 +190,6 @@ def vgg16_bn(pretrained=False, progress=True, **kwargs):
     return _vgg('vgg16_bn', 'D', True, pretrained, progress, **kwargs)
 
 
-
 def vgg19(pretrained=False, progress=True, **kwargs):
     r"""VGG 19-layer model (configuration "E")
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
@@ -204,7 +199,6 @@ def vgg19(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg19', 'E', False, pretrained, progress, **kwargs)
-
 
 
 def vgg19_bn(pretrained=False, progress=True, **kwargs):

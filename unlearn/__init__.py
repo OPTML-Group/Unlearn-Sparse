@@ -5,12 +5,14 @@ from .fisher import fisher
 from .retrain import retrain
 from .impl import load_unlearn_checkpoint, save_unlearn_checkpoint
 
+
 def raw(data_loaders, model, criterion, args):
     pass
 
+
 def get_unlearn_method(name):
     """ method usage:
-    
+
     function(data_loaders, model, criterion, args)"""
     if name == "raw":
         return raw

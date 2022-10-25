@@ -5,10 +5,10 @@
 
 import time
 import os
-import copy 
+import copy
 import torch
 import numpy as np
-from dataset import TinyImageNet 
+from dataset import TinyImageNet
 # from advertorch.utils import NormalizeByChannelMeanStd
 import shutil
 from models import *
@@ -16,24 +16,29 @@ from dataset import *
 import random
 from torchvision import transforms
 
-__all__ = ['setup_model_dataset','AverageMeter','warmup_lr','save_checkpoint','setup_seed', 'accuracy']
+__all__ = ['setup_model_dataset', 'AverageMeter',
+           'warmup_lr', 'save_checkpoint', 'setup_seed', 'accuracy']
 
-def warmup_lr(epoch, step, optimizer, one_epoch_step,args):
+
+def warmup_lr(epoch, step, optimizer, one_epoch_step, args):
 
     overall_steps = args.warmup*one_epoch_step
-    current_steps = epoch*one_epoch_step + step 
+    current_steps = epoch*one_epoch_step + step
 
     lr = args.lr * current_steps/overall_steps
     lr = min(lr, args.lr)
 
     for p in optimizer.param_groups:
-        p['lr']=lr
+        p['lr'] = lr
+
 
 def save_checkpoint(state, is_SA_best, save_path, pruning, filename='checkpoint.pth.tar'):
     filepath = os.path.join(save_path, str(pruning)+filename)
     torch.save(state, filepath)
     if is_SA_best:
-        shutil.copyfile(filepath, os.path.join(save_path, str(pruning)+'model_SA_best.pth.tar'))
+        shutil.copyfile(filepath, os.path.join(
+            save_path, str(pruning)+'model_SA_best.pth.tar'))
+
 
 def load_checkpoint(device, save_path, pruning, filename='checkpoint.pth.tar'):
     filepath = os.path.join(save_path, str(pruning)+filename)
@@ -43,8 +48,10 @@ def load_checkpoint(device, save_path, pruning, filename='checkpoint.pth.tar'):
     print("Checkpoint not found! path:{}".format(filepath))
     return None
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -60,6 +67,7 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+
 def dataset_convert_to_test(dataset):
     test_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -69,14 +77,17 @@ def dataset_convert_to_test(dataset):
     dataset.transform = test_transform
     dataset.train = False
 
+
 def setup_model_dataset(args):
 
     if args.dataset == 'cifar10':
         classes = 10
         normalization = NormalizeByChannelMeanStd(
             mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
-        train_full_loader, val_loader, test_loader = cifar10_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers)
-        marked_loader, _,_ = cifar10_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers,class_to_replace=args.class_to_replace,num_indexes_to_replace=args.num_indexes_to_replace,indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark= True,shuffle = True)
+        train_full_loader, val_loader, test_loader = cifar10_dataloaders(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
+        marked_loader, _, _ = cifar10_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
+                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True)
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:
@@ -84,36 +95,41 @@ def setup_model_dataset(args):
 
         model.normalize = normalization
         print(model)
-        return model,train_full_loader,val_loader,test_loader,marked_loader
+        return model, train_full_loader, val_loader, test_loader, marked_loader
     elif args.dataset == 'cifar100':
         classes = 100
         normalization = NormalizeByChannelMeanStd(
             mean=[0.5071, 0.4866, 0.4409], std=[0.2673,	0.2564,	0.2762])
-        train_set_loader, val_loader, test_loader = cifar100_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers)
-    
+        train_set_loader, val_loader, test_loader = cifar100_dataloaders(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
+
     elif args.dataset == 'TinyImagenet':
         classes = 200
         normalization = NormalizeByChannelMeanStd(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        train_set_loader, val_loader, test_loader = TinyImageNet(args).data_loaders()
+        train_set_loader, val_loader, test_loader = TinyImageNet(
+            args).data_loaders()
 
     elif args.dataset == 'cifar100_no_val':
         classes = 100
         normalization = NormalizeByChannelMeanStd(
             mean=[0.5071, 0.4866, 0.4409], std=[0.2673,	0.2564,	0.2762])
-        train_set_loader, val_loader, test_loader = cifar100_dataloaders_no_val(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers)
-    
+        train_set_loader, val_loader, test_loader = cifar100_dataloaders_no_val(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
+
     elif args.dataset == 'cifar10_no_val':
         classes = 10
         normalization = NormalizeByChannelMeanStd(
             mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
-        train_set_loader, val_loader, test_loader = cifar10_dataloaders_no_val(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers)
-    
+        train_set_loader, val_loader, test_loader = cifar10_dataloaders_no_val(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
+
     elif args.dataset == "fast_cifar":
         classes = 10
         normalization = NormalizeByChannelMeanStd(
             mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
-        train_full_loader, val_loader, test_loader = fast_cifar10_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers)
+        train_full_loader, val_loader, test_loader = fast_cifar10_dataloaders(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         # marked_loader, _,_ = cifar10_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers,class_to_replace=args.class_to_replace,num_indexes_to_replace=args.num_indexes_to_replace,indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark= True,shuffle = True)
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
@@ -122,7 +138,7 @@ def setup_model_dataset(args):
 
         model.normalize = normalization
         print(model)
-        return model,train_full_loader,val_loader,test_loader        
+        return model, train_full_loader, val_loader, test_loader
 
     else:
         raise ValueError('Dataset not supprot yet !')
@@ -138,13 +154,15 @@ def setup_model_dataset(args):
 
     return model, train_set_loader, val_loader, test_loader
 
-def setup_seed(seed): 
+
+def setup_seed(seed):
     print('setup random seed = {}'.format(seed))
-    torch.manual_seed(seed) 
-    torch.cuda.manual_seed_all(seed) 
-    np.random.seed(seed) 
-    random.seed(seed) 
-    torch.backends.cudnn.deterministic = True 
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+
 
 class NormalizeByChannelMeanStd(torch.nn.Module):
     def __init__(self, mean, std):
@@ -169,6 +187,7 @@ class NormalizeByChannelMeanStd(torch.nn.Module):
         std = std[None, :, None, None]
         return tensor.sub(mean).div(std)
 
+
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
@@ -185,7 +204,7 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def run_commands(gpus, commands, call = False, dir = "commands", shuffle = True, delay = 0.5):
+def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay=0.5):
     random.shuffle(gpus)
     if os.path.exists(dir):
         shutil.rmtree(dir)
@@ -196,11 +215,11 @@ def run_commands(gpus, commands, call = False, dir = "commands", shuffle = True,
     for i, gpu in enumerate(gpus):
         i_commands = commands[i::n_gpu]
         prefix = "CUDA_VISIBLE_DEVICES={} ".format(gpu)
-        
+
         sh_path = os.path.join(dir, "run{}.sh".format(i))
         fout = open(sh_path, 'w')
         for com in i_commands:
-            print(prefix + com, file = fout)
+            print(prefix + com, file=fout)
         fout.close()
         if call:
             os.system("bash {}&".format(sh_path))

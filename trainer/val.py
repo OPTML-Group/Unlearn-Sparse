@@ -1,6 +1,7 @@
 import torch
 import utils
 
+
 def validate(val_loader, model, criterion, args):
     """
     Run evaluation
@@ -12,7 +13,7 @@ def validate(val_loader, model, criterion, args):
     model.eval()
 
     for i, (image, target) in enumerate(val_loader):
-        
+
         image = image.cuda()
         target = target.cuda()
 
@@ -31,11 +32,11 @@ def validate(val_loader, model, criterion, args):
 
         if i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Accuracy {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    i, len(val_loader), loss=losses, top1=top1))
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Accuracy {top1.val:.3f} ({top1.avg:.3f})'.format(
+                      i, len(val_loader), loss=losses, top1=top1))
 
     print('valid_accuracy {top1.avg:.3f}'
-        .format(top1=top1))
+          .format(top1=top1))
 
     return top1.avg
