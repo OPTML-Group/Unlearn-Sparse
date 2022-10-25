@@ -4,8 +4,46 @@ import os
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
+import pruner
 from trainer import validate
 import utils
+
+def plot_training_curve(training_result, save_dir, prefix):
+    # plot training curve
+    for name, result in training_result.items():
+        plt.plot(result, label=f'{name}_acc')
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, prefix + '_train.png'))
+    plt.close()
+
+def save_unlearn_checkpoint(model, evaluation_result, args):
+    state = {
+        'state_dict': model.state_dict(),
+        'evaluation_result': evaluation_result
+    }
+    utils.save_checkpoint(state, False, args.save_dir, args.unlearn)
+
+def load_unlearn_checkpoint(model, device, args):
+    checkpoint = utils.load_checkpoint(device, args.save_dir, args.unlearn)
+    if checkpoint is None:
+        return model, None, None
+
+    current_mask = pruner.extract_mask(checkpoint['state_dict'])
+    pruner.prune_model_custom(model, current_mask)
+    pruner.check_sparsity(model)
+
+    model.load_state_dict(checkpoint['state_dict'], strict=False)
+
+    # adding an extra forward process to enable the masks
+    x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
+    model.eval()
+    with torch.no_grad():
+        model(x_rand)
+
+    evaluation_result = checkpoint['evaluation_result']
+    return model, evaluation_result
+
+
 
 def _iterative_unlearn_impl(unlearn_iter_func):
     def _wrapped(data_loaders, model, criterion, args):
@@ -16,13 +54,13 @@ def _iterative_unlearn_impl(unlearn_iter_func):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1) # 0.1 is fixed
 
         results = OrderedDict((name, []) for name in data_loaders.keys())
-        train_result = []
+        results['train'] = []
 
         for epoch in range(0, args.epochs):
             start_time = time.time()
             print("Epoch #{}, Learning rate: {}".format(epoch, optimizer.state_dict()['param_groups'][0]['lr']))
             train_acc = unlearn_iter_func(data_loaders, model, criterion, optimizer, epoch, args)
-            train_result.append(train_acc)
+            results['train'].append(train_acc)
 
             for name, loader in data_loaders.items():
                 print(f"{name} acc:")
@@ -30,23 +68,7 @@ def _iterative_unlearn_impl(unlearn_iter_func):
                 results[name].append(val_acc)
             scheduler.step()
 
-            utils.save_checkpoint({
-                'state': 0,
-                'result': results,
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'scheduler': scheduler.state_dict(),
-                'init_weight': None
-            }, is_SA_best=True, pruning=0, save_path=args.save_dir)
-
-            # plot training curve
-            for name, result in results.items():
-                plt.plot(result, label=f'{name}_acc')
-            plt.plot(train_result, label = 'train_acc')
-            plt.legend()
-            plt.savefig(os.path.join(args.save_dir, str(0)+'net_train.png'))
-            plt.close()
+            plot_training_curve(results, args.save_dir, args.unlearn)
 
             print("one epoch duration:{}".format(time.time()-start_time))
 

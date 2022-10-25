@@ -1,8 +1,4 @@
-'''
-    main process for a Lottery Tickets experiments
-'''
 import os
-import numpy as np
 import copy
 import torch
 import torch.optim
@@ -12,7 +8,7 @@ from collections import OrderedDict
 
 import utils
 import unlearn
-from pruner import *
+import pruner
 from metrics import efficacy, MIA
 from trainer import validate
 
@@ -33,7 +29,7 @@ def main():
     if args.seed:
         utils.setup_seed(args.seed)
     seed = args.seed
-    # prepare dataset 
+    # prepare dataset
     model, train_loader_full, val_loader, test_loader, marked_loader = utils.setup_model_dataset(args)
     model.cuda()
     def replace_loader_dataset(dataset, batch_size=args.batch_size, seed=1, shuffle=True):
@@ -62,38 +58,18 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
 
+    checkpoint = None
+
     if args.resume:
-        print('resume from checkpoint {}'.format(args.checkpoint))
-        checkpoint = torch.load(args.checkpoint, map_location = device)
-        start_epoch = checkpoint['epoch']
-        start_state = checkpoint['state']
+        checkpoint = unlearn.load_unlearn_checkpoint(model, device, args)
 
-        if start_state > 0:
-            current_mask = extract_mask(checkpoint['state_dict'])
-            prune_model_custom(model, current_mask)
-            check_sparsity(model)
-            optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                        momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=decreasing_lr, gamma=0.1)
-
-        model.load_state_dict(checkpoint['state_dict'], strict=False)
-        # adding an extra forward process to enable the masks
-        x_rand = torch.rand(1,3,args.input_size, args.input_size).cuda()
-        model.eval()
-        with torch.no_grad():
-            model(x_rand)
-
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        scheduler.load_state_dict(checkpoint['scheduler'])
-        print('loading state:', start_state)
-        print('loading from epoch: ',start_epoch, 'best_sa=', best_sa)
-
+    if args.resume and checkpoint is not None:
+        model, evaluation_result = checkpoint
     else:
         checkpoint = torch.load(args.mask, map_location = device)
-        current_mask = extract_mask(checkpoint)
-        prune_model_custom(model, current_mask)
-        check_sparsity(model)
+        current_mask = pruner.extract_mask(checkpoint)
+        pruner.prune_model_custom(model, current_mask)
+        pruner.check_sparsity(model)
 
         if args.unlearn != "retrain":
             model.load_state_dict(checkpoint, strict=False)
@@ -101,6 +77,7 @@ def main():
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
 
         unlearn_method(unlearn_data_loaders, model, criterion, args)
+        unlearn.save_unlearn_checkpoint(model, None, args)
     
     for name, loader in unlearn_data_loaders.items():
         val_acc = validate(loader, model, criterion, args)
@@ -113,6 +90,7 @@ def main():
     retain_loader_test = torch.utils.data.DataLoader(retain_dataset_test,batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     print(len(retain_dataset_train))
     print(len(retain_dataset_test))
+
     MIA(retain_loader_train,retain_loader_test,forget_loader,test_loader,model)
 
     print(efficacy(model,forget_loader, device))

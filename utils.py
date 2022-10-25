@@ -34,6 +34,13 @@ def save_checkpoint(state, is_SA_best, save_path, pruning, filename='checkpoint.
     if is_SA_best:
         shutil.copyfile(filepath, os.path.join(save_path, str(pruning)+'model_SA_best.pth.tar'))
 
+def load_checkpoint(device, save_path, pruning, filename='checkpoint.pth.tar'):
+    filepath = os.path.join(save_path, str(pruning)+filename)
+    if os.path.exists(filepath):
+        return torch.load(filepath, device)
+    print("Checkpoint not found! path:{}".format(filepath))
+    return None
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):

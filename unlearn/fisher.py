@@ -1,8 +1,5 @@
 import torch
 from torch.autograd import grad
-import pickle
-import numpy as np
-from time import time
 from tqdm import tqdm
 
 def fisher_information_martix(model, train_dl, device):
