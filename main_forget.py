@@ -9,7 +9,6 @@ from collections import OrderedDict
 import utils
 import unlearn
 import pruner
-from metrics import efficacy
 from trainer import validate
 import evaluation
 
@@ -124,8 +123,10 @@ def main():
 
     if 'efficacy' not in evaluation_result:
         utils.dataset_convert_to_test(forget_loader.dataset)
-        evaluation_result['efficacy'] = efficacy(model, forget_loader, device)
-        print(efficacy(model, forget_loader, device))
+        efficacy_score = evaluation.efficacy(model, forget_loader, device)
+        print('efficacy score: {}'.format(efficacy_score))
+
+        evaluation_result['efficacy'] = efficacy_score
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
 
