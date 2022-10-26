@@ -211,6 +211,11 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
     if shuffle:
         random.shuffle(commands)
     os.makedirs(dir, exist_ok=True)
+
+    fout = open('stop_{}.sh'.format(dir), 'w')
+    print("kill $(ps aux|grep 'bash " + dir + "'|awk '{print $2}')", file=fout)
+    fout.close()
+
     n_gpu = len(gpus)
     for i, gpu in enumerate(gpus):
         i_commands = commands[i::n_gpu]
