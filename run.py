@@ -2,7 +2,7 @@ from utils import run_commands
 
 params = {
     "FT": "--epoch 10 --lr 0.01",
-    "GA": "--epoch 10 --lr 0.01",
+    "GA": "--epoch 10 --lr 0.001",
     "RL": "--epoch 10 --lr 0.01"
 }
 
@@ -10,7 +10,7 @@ params = {
 def gen_commands(rerun = False):
     commands = []
     sparsities = "0p5 0p75 0p9 0p99 0p95 0p995".split(' ')
-    methods = "FT GA RL".split(' ')  # GA RL  raw fisher retrain
+    methods = "FT GA RL raw fisher retrain".split(' ')
     nums = [100, 4500]# , 2250, 450]
     seeds = [1, 2, 4]
     for seed in seeds:
@@ -35,7 +35,7 @@ def gen_commands(rerun = False):
 
 
 if __name__ == "__main__":
-    commands = gen_commands(rerun = True)
+    commands = gen_commands(rerun = False)
     print(len(commands))
-    run_commands(list(range(8)), commands, call=True,
+    run_commands(list(range(8)) * 4, commands, call=True,
                  dir="commands", shuffle=True, delay=0.5)
