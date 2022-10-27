@@ -10,3 +10,4 @@ commands
 *.pth
 *.png
 *.jpg
+*.sh
