@@ -123,6 +123,30 @@ def main():
             retain_loader_train, retain_loader_test, forget_loader, test_loader, model, device)
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
+    if 'SVC_MIA' not in evaluation_result:
+        test_len = len(test_loader.dataset)
+        forget_len = len(forget_dataset)
+        retain_len = len(retain_dataset)
+
+        utils.dataset_convert_to_test(retain_dataset)
+        utils.dataset_convert_to_test(forget_loader)
+        utils.dataset_convert_to_test(test_loader)
+
+
+        retain_dataset_train = torch.utils.data.Subset(retain_dataset, list(range(test_len)))
+        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(range(retain_len-forget_len, retain_len)))
+        retain_loader_train = torch.utils.data.DataLoader(
+            retain_dataset_train, batch_size=args.batch_size, shuffle=False)
+        retain_loader_test = torch.utils.data.DataLoader(
+            retain_dataset_test, batch_size=args.batch_size, shuffle=False)
+
+        print(len(retain_dataset_train))
+        print(len(retain_dataset_test))
+
+        evaluation_result['SVC_MIA'] = evaluation.SVC_MIA(
+            retain_loader_train, retain_loader_test, forget_loader, test_loader, model, device)
+        unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
+
     if 'efficacy' not in evaluation_result:
         utils.dataset_convert_to_test(forget_loader.dataset)
         efficacy_score = evaluation.efficacy(model, forget_loader, device)
