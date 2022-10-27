@@ -100,15 +100,17 @@ def main():
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
     if 'MIA' not in evaluation_result:
+        test_len = len(test_loader.dataset)
         forget_len = len(forget_dataset)
+        retain_len = len(retain_dataset)
 
         utils.dataset_convert_to_test(retain_dataset)
         utils.dataset_convert_to_test(forget_loader)
         utils.dataset_convert_to_test(test_loader)
-        retain_dataset_train = torch.utils.data.Subset(
-            retain_dataset, list(range(len(retain_dataset)-forget_len)))
-        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(
-            range(len(retain_dataset)-forget_len, len(retain_dataset))))
+
+
+        retain_dataset_train = torch.utils.data.Subset(retain_dataset, list(range(test_len)))
+        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(range(retain_len-forget_len, retain_len)))
         retain_loader_train = torch.utils.data.DataLoader(
             retain_dataset_train, batch_size=args.batch_size, shuffle=False)
         retain_loader_test = torch.utils.data.DataLoader(
