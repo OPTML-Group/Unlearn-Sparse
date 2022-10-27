@@ -59,8 +59,9 @@ def main():
     evaluations = init_evaluations()
 
     load_checkpoints(evaluations)
+    export_path = "export_{}.pkl".format(''.join(str(x) for x in seeds))
 
-    with open("export.pkl", 'wb') as fout:
+    with open(export_path, 'wb') as fout:
         pkl.dump(evaluations, fout)
     print_metrics = 'accuracy_retain MIA_confidence MIA_entropy efficacy'.split(' ')
     with open('output.log', 'w') as fout:
