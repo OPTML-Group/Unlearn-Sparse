@@ -1,5 +1,4 @@
 import torch
-from tqdm import tqdm
 import numpy as np
 from sklearn.svm import SVC
 import torch.nn.functional as F
@@ -11,7 +10,7 @@ def collect_prob(data_loader, model):
     prob = []
     model.eval()
     with torch.no_grad():
-        for idx, batch in enumerate(tqdm(data_loader, leave=False)):
+        for idx, batch in enumerate(data_loader):
             batch = [tensor.to(next(model.parameters()).device) for tensor in batch]
             data, target = batch
 
