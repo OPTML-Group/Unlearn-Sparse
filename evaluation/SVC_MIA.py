@@ -19,12 +19,12 @@ def collect_prob(data_loader, model):
                 prob.append(F.softmax(output, dim=-1).data)
     return torch.cat(prob)
 
-def SVC_MIA(retain_loader_train, retain_loader_test, forget_loader, test_loader, model, device):
-    shadow_train_prob = collect_prob(retain_loader_train, model)
-    shadow_test_prob = collect_prob(test_loader, model)
+def SVC_MIA(shadow_train, target_train, target_test, shadow_test, model):
+    shadow_train_prob = collect_prob(shadow_train, model)
+    shadow_test_prob = collect_prob(shadow_test, model)
 
-    target_train_prob = collect_prob(retain_loader_test, model)
-    target_test_prob = collect_prob(forget_loader, model)
+    target_train_prob = collect_prob(target_train, model)
+    target_test_prob = collect_prob(target_test, model)
 
     X_shadow = torch.cat([entropy(shadow_train_prob), entropy(shadow_test_prob)]).cpu().numpy().reshape(-1, 1)
     Y_shadow = np.concatenate([np.ones(len(shadow_train_prob)), np.zeros(len(shadow_test_prob))])

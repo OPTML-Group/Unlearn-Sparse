@@ -73,6 +73,8 @@ def main():
         model, evaluation_result = checkpoint
     else:
         checkpoint = torch.load(args.mask, map_location=device)
+        if 'state_dict' in checkpoint.keys():
+            checkpoint = checkpoint['state_dict']
         current_mask = pruner.extract_mask(checkpoint)
         pruner.prune_model_custom(model, current_mask)
         pruner.check_sparsity(model)
@@ -108,9 +110,10 @@ def main():
         utils.dataset_convert_to_test(forget_loader)
         utils.dataset_convert_to_test(test_loader)
 
-
-        retain_dataset_train = torch.utils.data.Subset(retain_dataset, list(range(test_len)))
-        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(range(retain_len-forget_len, retain_len)))
+        retain_dataset_train = torch.utils.data.Subset(
+            retain_dataset, list(range(test_len)))
+        retain_dataset_test = torch.utils.data.Subset(
+            retain_dataset, list(range(retain_len-forget_len, retain_len)))
         retain_loader_train = torch.utils.data.DataLoader(
             retain_dataset_train, batch_size=args.batch_size, shuffle=False)
         retain_loader_test = torch.utils.data.DataLoader(
@@ -132,9 +135,10 @@ def main():
         utils.dataset_convert_to_test(forget_loader)
         utils.dataset_convert_to_test(test_loader)
 
-
-        retain_dataset_train = torch.utils.data.Subset(retain_dataset, list(range(test_len)))
-        retain_dataset_test = torch.utils.data.Subset(retain_dataset, list(range(retain_len-forget_len, retain_len)))
+        retain_dataset_train = torch.utils.data.Subset(
+            retain_dataset, list(range(test_len)))
+        retain_dataset_test = torch.utils.data.Subset(
+            retain_dataset, list(range(retain_len-forget_len, retain_len)))
         retain_loader_train = torch.utils.data.DataLoader(
             retain_dataset_train, batch_size=args.batch_size, shuffle=False)
         retain_loader_test = torch.utils.data.DataLoader(
@@ -144,7 +148,56 @@ def main():
         print(len(retain_dataset_test))
 
         evaluation_result['SVC_MIA'] = evaluation.SVC_MIA(
-            retain_loader_train, retain_loader_test, forget_loader, test_loader, model, device)
+            shadow_train=retain_loader_train, shadow_test=test_loader,
+            target_train=retain_loader_test, target_test=forget_loader,
+            model=model)
+        unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
+
+    if 'SVC_MIA_forget' not in evaluation_result:
+        test_len = len(test_loader.dataset)
+        forget_len = len(forget_dataset)
+        retain_len = len(retain_dataset)
+        num_half = forget_len // 4
+        num = num_half * 2
+
+        utils.dataset_convert_to_test(retain_dataset)
+        utils.dataset_convert_to_test(forget_loader)
+        utils.dataset_convert_to_test(test_loader)
+
+        retain_dataset_train = torch.utils.data.Subset(
+            retain_dataset, list(range(num_half)))
+        retain_dataset_test = torch.utils.data.Subset(
+            retain_dataset, list(range(retain_len-num_half, retain_len)))
+        test_dataset_train = torch.utils.data.Subset(
+            test_loader.dataset, list(range(num_half)))
+        test_dataset_test = torch.utils.data.Subset(
+            test_loader.dataset, list(range(test_len-num_half, test_len)))
+        shadow_dataset_test = torch.utils.data.ConcatDataset(
+            [retain_dataset_train, test_dataset_train])
+        target_dataset_test = torch.utils.data.ConcatDataset(
+            [retain_dataset_test, test_dataset_test])
+
+        shadow_dataset_train = torch.utils.data.Subset(
+            forget_dataset, list(range(num)))
+        target_dataset_train = torch.utils.data.Subset(
+            forget_dataset, list(range(forget_len-num, forget_len)))
+
+        shadow_loader_train = torch.utils.data.DataLoader(
+            shadow_dataset_train, batch_size=args.batch_size, shuffle=False)
+        shadow_loader_test = torch.utils.data.DataLoader(
+            shadow_dataset_test, batch_size=args.batch_size, shuffle=False)
+        target_loader_train = torch.utils.data.DataLoader(
+            target_dataset_train, batch_size=args.batch_size, shuffle=False)
+        target_loader_test = torch.utils.data.DataLoader(
+            target_dataset_test, batch_size=args.batch_size, shuffle=False)
+
+        print(len(shadow_dataset_train), len(shadow_dataset_test),
+              len(target_dataset_train), len(target_dataset_test))
+
+        evaluation_result['SVC_MIA_forget'] = evaluation.SVC_MIA(
+            shadow_train=shadow_loader_train, shadow_test=shadow_loader_test,
+            target_train=target_loader_train, target_test=target_loader_test,
+            model=model)
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
     if 'efficacy' not in evaluation_result:

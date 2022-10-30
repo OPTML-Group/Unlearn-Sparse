@@ -3,16 +3,17 @@ from utils import run_commands
 params = {
     "FT": "--epoch 10 --lr 0.01",
     "GA": "--epoch 10 --lr 0.001",
-    "RL": "--epoch 10 --lr 0.01"
+    "RL": "--epoch 10 --lr 0.01",
+    "fisher": "--alpha 3e-6"
 }
 
 
-def gen_commands(rerun = False):
+def gen_commands_synflow(rerun = False):
     commands = []
     sparsities = "0p5 0p75 0p9 0p99 0p95 0p995".split(' ')
-    methods = "FT GA RL raw fisher retrain".split(' ')
+    methods = "FT GA RL raw retrain".split(' ') #  fisher FT GA RL raw retrain
     nums = [100, 4500]# , 2250, 450]
-    seeds = [1, 2, 4]
+    seeds = [1, 2, 3, 4, 5]
     for seed in seeds:
         for num in nums:
             for unlearn in methods:
@@ -33,9 +34,28 @@ def gen_commands(rerun = False):
                     commands.append(command)
     return commands
 
+def gen_commands_omp(rerun = False):
+    pruning_method = "OMP"
+    commands = []
+    sparsities = "0.5 0.9 0.75".split(' ')
+    methods = "FT GA RL raw retrain".split(' ') #  fisher FT GA RL raw retrain
+    nums = [100, 4500]# , 2250, 450]
+    seeds = [1, 2, 3, 4, 5]
+    for seed in seeds:
+        for sparsity in sparsities:
+            for num in nums:
+                for unlearn in methods:
+                    command = f"python -u main_forget.py --save_dir unlearn_results/{pruning_method}/{sparsity}/{unlearn}_{num}/seed{seed} --mask pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed}"
+                    if unlearn in params:
+                        command = command + ' ' + params[unlearn]
+                    if not rerun:
+                        command = command + ' --resume'
+                    commands.append(command)
+    return commands
+
 
 if __name__ == "__main__":
-    commands = gen_commands(rerun = False)
+    commands = gen_commands_omp(rerun = False)
     print(len(commands))
-    run_commands(list(range(8)) * 4, commands, call=True,
+    run_commands([0, 1, 3, 4] * 3, commands, call=True,
                  dir="commands", shuffle=True, delay=0.5)
