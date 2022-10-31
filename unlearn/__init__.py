@@ -1,7 +1,7 @@
 from .GA import GA
 from .RL import RL
 from .FT import FT
-from .fisher import fisher
+from .fisher import fisher,fisher_new
 from .retrain import retrain
 from .impl import load_unlearn_checkpoint, save_unlearn_checkpoint
 
@@ -26,5 +26,7 @@ def get_unlearn_method(name):
         return fisher
     elif name == "retrain":
         return retrain
+    elif name== "fisher_new":
+        return fisher_new
     else:
         raise NotImplementedError(f"Unlearn method {name} not implemented!")

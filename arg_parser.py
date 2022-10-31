@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str,
                         default='../data/tiny-imagenet-200', help='dir to tiny-imagenet')
     parser.add_argument('--num_workers', type=int, default=4)
-
+    parser.add_argument('--num_classes', type=int, default=10)
     ##################################### Architecture ############################################
     parser.add_argument('--arch', type=str,
                         default='resnet18', help='model architecture')
@@ -73,5 +73,5 @@ def parse_args():
     parser.add_argument('--indexes_to_replace', type=list, default=None,
                         help='Specific index data to forget')
     parser.add_argument('--alpha', default=0.2, type=float,
-                        help='unlearn noise')  # pruning rate is always 20%
+                        help='unlearn noise')  
     return parser.parse_args()
