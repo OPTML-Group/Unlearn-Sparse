@@ -22,9 +22,9 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args):
     if epoch < args.warmup:
         utils.warmup_lr(epoch, i+1, optimizer, one_epoch_step=loader_len, args=args)
 
-    for i, (image, target) in enumerate(retain_loader):
+    for i, (image, target) in enumerate(forget_loader):
         image = image.cuda()
-        target = target.cuda()
+        target = torch.randint(0, 9, target.shape).cuda()
 
         # compute output
         output_clean = model(image)
@@ -51,10 +51,10 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args):
                       epoch, i, loader_len, end-start, loss=losses, top1=top1))
             start = time.time()
 
-    for it, (image, target) in enumerate(forget_loader):
-        i = it + len(retain_loader)
+    for it, (image, target) in enumerate(retain_loader):
+        i = it + len(forget_loader)
         image = image.cuda()
-        target = torch.randint(0, 9, target.shape).cuda()
+        target = target.cuda()
 
         # compute output
         output_clean = model(image)
