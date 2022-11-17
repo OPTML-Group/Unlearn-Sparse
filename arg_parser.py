@@ -50,6 +50,8 @@ def parse_args():
                         type=int, help='print frequency')
     parser.add_argument('--decreasing_lr', default='80,120',
                         help='decreasing strategy')
+    parser.add_argument('--no-aug', action='store_true', default=False,
+                        help='No augmentation in training dataset (transformation).')
 
     ##################################### Pruning setting #################################################
     parser.add_argument('--pruning_times', default=1,
@@ -73,5 +75,5 @@ def parse_args():
     parser.add_argument('--indexes_to_replace', type=list, default=None,
                         help='Specific index data to forget')
     parser.add_argument('--alpha', default=0.2, type=float,
-                        help='unlearn noise')  
+                        help='unlearn noise')
     return parser.parse_args()

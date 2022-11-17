@@ -87,7 +87,7 @@ def setup_model_dataset(args):
         train_full_loader, val_loader, test_loader = cifar10_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         marked_loader, _, _ = cifar10_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
-                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True)
+                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:

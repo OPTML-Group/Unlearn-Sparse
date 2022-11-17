@@ -355,13 +355,18 @@ class TinyImageNet:
         return train_loader, val_loader, test_loader
 
 
-def cifar10_dataloaders(batch_size=128, data_dir='datasets/cifar10', num_workers=2, class_to_replace: int = None, num_indexes_to_replace=None, indexes_to_replace=None, seed: int = 1, only_mark: bool = False, shuffle=True):
+def cifar10_dataloaders(batch_size=128, data_dir='datasets/cifar10', num_workers=2, class_to_replace: int = None, num_indexes_to_replace=None, indexes_to_replace=None, seed: int = 1, only_mark: bool = False, shuffle=True, no_aug=False):
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
+    if no_aug:
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    else:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])
 
     test_transform = transforms.Compose([
         transforms.ToTensor(),
