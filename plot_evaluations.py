@@ -7,8 +7,8 @@ import seaborn as sns
 import shutil
 
 sparsities = "dense 0p5 0p75 0p9 0p95 0p99 0p995".split(' ')
-methods = "raw retrain FT GA RL".split(' ')  # fisher
-nums = [100, 4500]  # , 2250, 450]
+methods = "raw retrain FT GA RL fisher_new".split(' ')  # fisher
+nums = [100, 4500]
 seeds = [1, 2, 3, 4, 5]
 metrics = ['accuracy_retain', 'accuracy_forget', 'accuracy_val', 'accuracy_test', 'MIA_correctness',
            'MIA_confidence', 'MIA_entropy', 'MIA_m_entropy', 'efficacy', 'SVC_MIA', 'SVC_MIA_forget']
@@ -66,7 +66,7 @@ def init_evaluations(pkl_path=None):
     return ret
 
 
-def plot_accuracy(evaluations, fout):
+def plot_accuracy(evaluations, fout, has_stand = True):
     print_metrics = 'accuracy_retain accuracy_forget accuracy_test'.split(' ')
     for metric in print_metrics:
         print(metric, file=fout)
@@ -78,14 +78,15 @@ def plot_accuracy(evaluations, fout):
                     item = evaluations[(metric, num, unlearn, sparsity)]
                     item = np.array(item)
                     mean = np.mean(item, axis=0)
-                    norm = np.var(item, axis=0) ** 0.5
-
-                    output = "{:.2f}±{:.2f}".format(mean, norm)
+                    output = "{:.2f}".format(mean)
+                    if has_stand:
+                        stand = np.var(item, axis=0) ** 0.5
+                        output += "±{:.2f}".format(stand)
                     line.append(output)
                 print('\t'.join(x for x in line), file=fout)
 
 
-def plot_MIA(evaluations, fout):
+def plot_MIA(evaluations, fout, has_stand = True):
     print_metrics = 'SVC_MIA'.split(' ')
     for metric in print_metrics:
         for i in range(2):
@@ -102,14 +103,15 @@ def plot_MIA(evaluations, fout):
                         item = evaluations[(metric, num, unlearn, sparsity)]
                         item = np.array(item) * 100
                         mean = np.mean(item, axis=0)
-                        norm = np.var(item, axis=0) ** 0.5
-
-                        output = "{:.2f}±{:.2f}".format(mean[i], norm[i])
+                        output = "{:.2f}".format(mean[i])
+                        if has_stand:
+                            stand = np.var(item, axis=0) ** 0.5
+                            output += "±{:.2f}".format(stand[i])
                         line.append(output)
                     print('\t'.join(x for x in line), file=fout)
 
 
-def plot_MIA_forget(evaluations, fout):
+def plot_MIA_forget(evaluations, fout, has_stand = True):
     print_metrics = 'SVC_MIA_forget'.split(' ')
     for metric in print_metrics:
         print(metric, file=fout)
@@ -121,9 +123,10 @@ def plot_MIA_forget(evaluations, fout):
                     item = evaluations[(metric, num, unlearn, sparsity)]
                     item = (np.array(item) * 100).mean(axis=1)
                     mean = np.mean(item, axis=0)
-                    norm = np.var(item, axis=0) ** 0.5
-
-                    output = "{:.2f}±{:.2f}".format(mean, norm)
+                    output = "{:.2f}".format(mean)
+                    if has_stand:
+                        stand = np.var(item, axis=0) ** 0.5
+                        output += "±{:.2f}".format(stand)
                     line.append(output)
                 print('\t'.join(x for x in line), file=fout)
 
@@ -167,19 +170,24 @@ def plot_efficacy(evaluations):
 
 
 def main():
-    evaluations = init_evaluations()
-
+    evaluations = init_evaluations()# "export_omp_12345.pkl")
     load_checkpoints(evaluations)
     export_path = "export_{}.pkl".format(''.join(str(x) for x in seeds))
 
     with open(export_path, 'wb') as fout:
         pkl.dump(evaluations, fout)
+    
+    for has_stand in [True, False]:
+        log_name = "output.log"
+        if not has_stand:
+            log_name = "output_no_stand.log"
 
-    with open('output.log', 'w') as fout:
-        plot_accuracy(evaluations, fout)
-        plot_MIA(evaluations, fout)
-        plot_MIA_forget(evaluations, fout)
-    shutil.rmtree("figs", ignore_errors=True)
+        with open(log_name, 'w') as fout:
+            plot_accuracy(evaluations, fout, has_stand)
+            plot_MIA(evaluations, fout, has_stand)
+            plot_MIA_forget(evaluations, fout, has_stand)
+
+    # shutil.rmtree("figs", ignore_errors=True)
     plot_efficacy(evaluations)
 
 

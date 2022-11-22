@@ -205,11 +205,11 @@ def accuracy(output, target, topk=(1,)):
 
 
 def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay=0.5):
-    random.shuffle(gpus)
     if os.path.exists(dir):
         shutil.rmtree(dir)
     if shuffle:
         random.shuffle(commands)
+        random.shuffle(gpus)
     os.makedirs(dir, exist_ok=True)
 
     fout = open('stop_{}.sh'.format(dir), 'w')
