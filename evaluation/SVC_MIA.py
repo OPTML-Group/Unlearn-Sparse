@@ -3,39 +3,97 @@ import numpy as np
 from sklearn.svm import SVC
 import torch.nn.functional as F
 
-def entropy(p, dim = -1, keepdim = False):
+
+def entropy(p, dim=-1, keepdim=False):
     return -torch.where(p > 0, p * p.log(), p.new([0.0])).sum(dim=dim, keepdim=keepdim)
 
+
 def collect_prob(data_loader, model):
+    if data_loader is None:
+        return torch.zeros([0, 10]), torch.zeros([0])
+
     prob = []
+    targets = []
+
     model.eval()
     with torch.no_grad():
-        for idx, batch in enumerate(data_loader):
-            batch = [tensor.to(next(model.parameters()).device) for tensor in batch]
+        for batch in data_loader:
+            batch = [tensor.to(next(model.parameters()).device)
+                    for tensor in batch]
             data, target = batch
 
             with torch.no_grad():
                 output = model(data)
                 prob.append(F.softmax(output, dim=-1).data)
-    return torch.cat(prob)
+                targets.append(target)
+
+    return torch.cat(prob), torch.cat(targets)
+
+
+def SVC_fit_predict(shadow_train, shadow_test, target_train, target_test):
+    n_shadow_train = shadow_train.shape[0]
+    n_shadow_test = shadow_test.shape[0]
+    n_target_train = target_train.shape[0]
+    n_target_test = target_test.shape[0]
+
+    X_shadow = torch.cat([shadow_train, shadow_test]).cpu().numpy().reshape(n_shadow_train + n_shadow_test, -1)
+    Y_shadow = np.concatenate([np.ones(n_shadow_train), np.zeros(n_shadow_test)])
+
+    clf = SVC(C=3, gamma='auto', kernel='rbf')
+    clf.fit(X_shadow, Y_shadow)
+
+    accs = []
+
+    if n_target_train > 0:
+        X_target_train = target_train.cpu().numpy().reshape(n_target_train, -1)
+        acc_train = clf.predict(X_target_train).mean()
+        accs.append(acc_train)
+
+    if n_target_test > 0:
+        X_target_test = target_test.cpu().numpy().reshape(n_target_test, -1)
+        acc_test = 1 - clf.predict(X_target_test).mean()
+        accs.append(acc_test)
+
+    return np.mean(accs)
+
 
 def SVC_MIA(shadow_train, target_train, target_test, shadow_test, model):
-    shadow_train_prob = collect_prob(shadow_train, model)
-    shadow_test_prob = collect_prob(shadow_test, model)
+    shadow_train_prob, shadow_train_labels = collect_prob(shadow_train, model)
+    shadow_test_prob, shadow_test_labels = collect_prob(shadow_test, model)
 
-    target_train_prob = collect_prob(target_train, model)
-    target_test_prob = collect_prob(target_test, model)
+    target_train_prob, target_train_labels = collect_prob(target_train, model)
+    target_test_prob, target_test_labels = collect_prob(target_test, model)
 
-    X_shadow = torch.cat([entropy(shadow_train_prob), entropy(shadow_test_prob)]).cpu().numpy().reshape(-1, 1)
-    Y_shadow = np.concatenate([np.ones(len(shadow_train_prob)), np.zeros(len(shadow_test_prob))])
+    shadow_train_corr = (torch.argmax(shadow_train_prob, axis=1)
+                         == shadow_train_labels).int()
+    shadow_test_corr = (torch.argmax(shadow_test_prob, axis=1)
+                        == shadow_test_labels).int()
+    target_train_corr = (torch.argmax(target_train_prob, axis=1)
+                         == target_train_labels).int()
+    target_test_corr = (torch.argmax(target_test_prob, axis=1)
+                        == target_test_labels).int()
 
-    X_target_train = entropy(target_train_prob).cpu().numpy().reshape(-1, 1)
-    X_target_test = entropy(target_test_prob).cpu().numpy().reshape(-1, 1)
+    shadow_train_conf = torch.gather(
+        shadow_train_prob, 1, shadow_train_labels[:, None])
+    shadow_test_conf = torch.gather(
+        shadow_test_prob, 1, shadow_test_labels[:, None])
+    target_train_conf = torch.gather(
+        target_train_prob, 1, target_train_labels[:, None])
+    target_test_conf = torch.gather(
+        target_test_prob, 1, target_test_labels[:, None])
 
-    clf = SVC(C=3,gamma='auto',kernel='rbf')
-    clf.fit(X_shadow, Y_shadow)
-    
-    acc_train = clf.predict(X_target_train).mean()
-    acc_test = 1 - clf.predict(X_target_test).mean()
-    print("train acc: {}, test acc: {}, mean: {}".format(acc_train, acc_test, (acc_train + acc_test) / 2))
-    return (acc_train, acc_test)
+    shadow_train_entr = entropy(shadow_train_prob)
+    shadow_test_entr = entropy(shadow_test_prob)
+    target_train_entr = entropy(target_train_prob)
+    target_test_entr = entropy(target_test_prob)
+
+    acc_corr = SVC_fit_predict(
+        shadow_train_corr, shadow_test_corr, target_train_corr, target_test_corr)
+    acc_conf = SVC_fit_predict(
+        shadow_train_conf, shadow_test_conf, target_train_conf, target_test_conf)
+    acc_entr = SVC_fit_predict(
+        shadow_train_entr, shadow_test_entr, target_train_entr, target_test_entr)
+
+    m = {"correctness": acc_corr, "confidence": acc_conf, "entropy": acc_entr}
+    print(m)
+    return m

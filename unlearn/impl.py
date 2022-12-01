@@ -24,6 +24,7 @@ def save_unlearn_checkpoint(model, evaluation_result, args):
         'evaluation_result': evaluation_result
     }
     utils.save_checkpoint(state, False, args.save_dir, args.unlearn)
+    utils.save_checkpoint(evaluation_result, False, args.save_dir, args.unlearn, filename="eval_result.pth.tar")
 
 
 def load_unlearn_checkpoint(model, device, args):

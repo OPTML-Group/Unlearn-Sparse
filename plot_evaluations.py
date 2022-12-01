@@ -6,12 +6,26 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import shutil
 
-sparsities = "dense 0p5 0p75 0p9 0p95 0p99 0p995".split(' ')
-methods = "raw retrain FT GA RL fisher_new".split(' ')  # fisher
-nums = [100, 4500]
+sparsities = "0.0 0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+methods = "raw retrain FT GA RL".split(' ')  # fisher
+nums = [100, 450, 2250, 4500]
 seeds = [1, 2, 3, 4, 5]
-metrics = ['accuracy_retain', 'accuracy_forget', 'accuracy_val', 'accuracy_test', 'MIA_correctness',
-           'MIA_confidence', 'MIA_entropy', 'MIA_m_entropy', 'efficacy', 'SVC_MIA', 'SVC_MIA_forget']
+metrics = ['accuracy_retain',
+           'accuracy_forget',
+           'accuracy_val',
+           'accuracy_test',
+           'efficacy',
+           'SVC_MIA_forget_efficacy_correctness',
+           'SVC_MIA_forget_efficacy_confidence',
+           'SVC_MIA_forget_efficacy_entropy',
+           'SVC_MIA_training_privacy_correctness',
+           'SVC_MIA_training_privacy_confidence',
+           'SVC_MIA_training_privacy_entropy',
+           'SVC_MIA_forget_privacy_correctness',
+           'SVC_MIA_forget_privacy_confidence',
+           'SVC_MIA_forget_privacy_entropy']
+pruning_methods = ["SynFlow", "OMP"]
+pruning_method = pruning_methods[1]
 
 
 def update_dict(obj, key, value):
@@ -34,6 +48,12 @@ def update_evaluations_with_item(evaluations, obj, num, unlearn, sparsity):
 
 
 def load_checkpoint(dir, unlearn):
+    path = os.path.join(dir, f"{unlearn}eval_result.pth.tar")
+    if os.path.exists(path):
+        print(f"load from {path}")
+        item = torch.load(path)
+        return item
+
     path = os.path.join(dir, f"{unlearn}checkpoint.pth.tar")
     if os.path.exists(path):
         print(f"load from {path}")
@@ -48,7 +68,10 @@ def load_checkpoints(results):
         for sparsity in sparsities:
             for num in nums:
                 for unlearn in methods:
-                    dir = f"unlearn_results/{sparsity}/{unlearn}_{num}/seed{seed}"
+                    if sparsity == "0.0":
+                        dir = f"unlearn_results/dense/{unlearn}_{num}/seed{seed}"
+                    else:
+                        dir = f"unlearn_results/{pruning_method}/{sparsity}/{unlearn}_{num}/seed{seed}"
                     ret = load_checkpoint(dir, unlearn)
                     if ret is not None:
                         update_evaluations_with_item(
@@ -66,7 +89,7 @@ def init_evaluations(pkl_path=None):
     return ret
 
 
-def plot_accuracy(evaluations, fout, has_stand = True):
+def plot_accuracy(evaluations, fout, has_stand=True):
     print_metrics = 'accuracy_retain accuracy_forget accuracy_test'.split(' ')
     for metric in print_metrics:
         print(metric, file=fout)
@@ -86,15 +109,13 @@ def plot_accuracy(evaluations, fout, has_stand = True):
                 print('\t'.join(x for x in line), file=fout)
 
 
-def plot_MIA(evaluations, fout, has_stand = True):
-    print_metrics = 'SVC_MIA'.split(' ')
-    for metric in print_metrics:
-        for i in range(2):
-            if i == 0:
-                suffix = "_retain"
-            else:
-                suffix = "_forget"
-            print(metric + suffix, file=fout)
+def plot_MIA(evaluations, fout, has_stand=True):
+    print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy SVC_MIA_forget_privacy'.split(' ')
+    print_suffixes = 'correctness confidence entropy'.split(' ')
+    for pref in print_prefixes:
+        for suff in print_suffixes:
+            metric = f'{pref}_{suff}'
+            print(metric, file=fout)
             for num in nums:
                 print(f"scrub {num}:", file=fout)
                 for unlearn in methods:
@@ -103,38 +124,18 @@ def plot_MIA(evaluations, fout, has_stand = True):
                         item = evaluations[(metric, num, unlearn, sparsity)]
                         item = np.array(item) * 100
                         mean = np.mean(item, axis=0)
-                        output = "{:.2f}".format(mean[i])
+                        output = "{:.2f}".format(mean)
                         if has_stand:
                             stand = np.var(item, axis=0) ** 0.5
-                            output += "±{:.2f}".format(stand[i])
+                            output += "±{:.2f}".format(stand)
                         line.append(output)
                     print('\t'.join(x for x in line), file=fout)
-
-
-def plot_MIA_forget(evaluations, fout, has_stand = True):
-    print_metrics = 'SVC_MIA_forget'.split(' ')
-    for metric in print_metrics:
-        print(metric, file=fout)
-        for num in nums:
-            print(f"scrub {num}:", file=fout)
-            for unlearn in methods:
-                line = [unlearn]
-                for sparsity in sparsities:
-                    item = evaluations[(metric, num, unlearn, sparsity)]
-                    item = (np.array(item) * 100).mean(axis=1)
-                    mean = np.mean(item, axis=0)
-                    output = "{:.2f}".format(mean)
-                    if has_stand:
-                        stand = np.var(item, axis=0) ** 0.5
-                        output += "±{:.2f}".format(stand)
-                    line.append(output)
-                print('\t'.join(x for x in line), file=fout)
 
 
 def plot_efficacy(evaluations):
     metric = "efficacy"
     for num in nums:
-        dir = f'figs/{num}'
+        dir = f'figs/{num}_{pruning_method}'
         os.makedirs(dir, exist_ok=True)
 
         # efficacy dist vs sparsity
@@ -170,22 +171,24 @@ def plot_efficacy(evaluations):
 
 
 def main():
-    evaluations = init_evaluations()# "export_omp_12345.pkl")
+    evaluations = init_evaluations()  # f"export_{pruning_method}_12345.pkl")
     load_checkpoints(evaluations)
-    export_path = "export_{}.pkl".format(''.join(str(x) for x in seeds))
 
-    with open(export_path, 'wb') as fout:
-        pkl.dump(evaluations, fout)
-    
+    # export_path = "export_{}_{}.pkl".format(
+    #     pruning_method, ''.join(str(x) for x in seeds))
+    # with open(export_path, 'wb') as fout:
+    #     pkl.dump(evaluations, fout)
+    # from IPython import embed
+    # embed()
+
     for has_stand in [True, False]:
-        log_name = "output.log"
+        log_name = f"output_{pruning_method}.log"
         if not has_stand:
-            log_name = "output_no_stand.log"
+            log_name = f"output_no_stand_{pruning_method}.log"
 
         with open(log_name, 'w') as fout:
             plot_accuracy(evaluations, fout, has_stand)
             plot_MIA(evaluations, fout, has_stand)
-            plot_MIA_forget(evaluations, fout, has_stand)
 
     # shutil.rmtree("figs", ignore_errors=True)
     plot_efficacy(evaluations)
