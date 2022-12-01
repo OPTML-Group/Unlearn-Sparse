@@ -52,7 +52,7 @@ def hessian(dataset, model, loss_fn, args):
     device = f"cuda:{int(args.gpu)}" if torch.cuda.is_available() else "cpu"
     loss_fn = torch.nn.CrossEntropyLoss(reduction="mean")
     train_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=False)
+        dataset, batch_size=32, shuffle=False)
 
     for p in model.parameters():
         p.grad_acc = 0

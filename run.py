@@ -4,7 +4,7 @@ params = {
     "FT": "--epoch 10 --lr 0.01",
     "GA": "--epoch 5 --lr 0.001",
     "RL": "--epoch 10 --lr 0.01",
-    "fisher_new": "--alpha 2e-8 --no-aug",
+    "fisher_new": "--alpha 3e-8 --no-aug",
     "fisher": "--alpha 1e-6 --no-aug"
 }
 mask_format = {
@@ -14,10 +14,10 @@ mask_format = {
 
 
 def gen_commands_unlearn(rerun=False):
-    pruning_methods = ["SynFlow", "OMP"]
+    pruning_methods = ["SynFlow"]#, "OMP"]
     commands = []
     sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "fisher_new FT GA RL raw retrain".split(' ')  # fisher_new FT GA RL raw retrain
+    methods = "fisher_new".split(' ')  # fisher_new FT GA RL raw retrain
     nums = [100, 4500, 2250, 450]
     seeds = [1, 2, 3, 4, 5]
 
@@ -52,23 +52,23 @@ def gen_commands_unlearn(rerun=False):
 def gen_commands_debug_fisher():
     commands = []
     methods = "fisher_new".split(' ')  # fisher FT GA RL raw retrain
-    nums = [2250, 450]
+    nums = [100, 2250, 450, 4500]
     alphas = [2e-8, 22e-9, 24e-9, 25e-9, 26e-9, 28e-9, 3e-8]
-    seed = 1
-    for alpha in alphas:
-        for num in nums:
-            for unlearn in methods:
-                command = f"python -u main_forget.py --save_dir unlearn_results/debug/{unlearn}_{num}_{alpha} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --alpha {alpha} --no-aug"
-                commands.append(command)
+    for seed in [1,2,3,4,5]:
+        for alpha in alphas:
+            for num in nums:
+                for unlearn in methods:
+                    command = f"python -u main_forget.py --save_dir unlearn_results/debug_32/{unlearn}_{num}_{alpha}_{seed} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --alpha {alpha} --no-aug"
+                    commands.append(command)
     return commands
 
 
 if __name__ == "__main__":
-    commands = gen_commands_unlearn(rerun=False)
+    commands = gen_commands_unlearn(rerun=True)
     print(len(commands))
-    run_commands(list(range(3)) * 5, commands, call=True,
+    run_commands(list(range(8)) * 3, commands, call=True,
                  dir="commands_RL", shuffle=False, delay=0.5)
     # commands = gen_commands_debug_fisher()
     # print(len(commands))
-    # run_commands([7, 6, 5, 4, 3] * 3, commands, call=True,
+    # run_commands(list(range(0, 8)) * 3, commands, call=True,
     #              dir="commands", shuffle=False, delay=0.5)
