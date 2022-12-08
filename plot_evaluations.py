@@ -7,9 +7,9 @@ import seaborn as sns
 import shutil
 
 sparsities = "0.0 0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-methods = "raw retrain FT GA RL".split(' ')  # fisher
-nums = [100, 450, 2250, 4500]
-seeds = [1, 2, 3, 4, 5]
+methods = "FT retrain fisher_new GA RL".split(' ')  # fisher
+nums = [4500]
+seeds = [1,2,3,4,5]
 metrics = ['accuracy_retain',
            'accuracy_forget',
            'accuracy_val',
@@ -25,7 +25,7 @@ metrics = ['accuracy_retain',
            'SVC_MIA_forget_privacy_confidence',
            'SVC_MIA_forget_privacy_entropy']
 pruning_methods = ["SynFlow", "OMP"]
-pruning_method = pruning_methods[1]
+pruning_method = pruning_methods[0]
 
 
 def update_dict(obj, key, value):
@@ -110,8 +110,8 @@ def plot_accuracy(evaluations, fout, has_stand=True):
 
 
 def plot_MIA(evaluations, fout, has_stand=True):
-    print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy SVC_MIA_forget_privacy'.split(' ')
-    print_suffixes = 'correctness confidence entropy'.split(' ')
+    print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy'.split(' ')
+    print_suffixes = 'correctness confidence entropy prob m_entropy'.split(' ')
     for pref in print_prefixes:
         for suff in print_suffixes:
             metric = f'{pref}_{suff}'

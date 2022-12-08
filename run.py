@@ -9,7 +9,7 @@ params = {
 }
 mask_format = {
     "SynFlow": "pruning_models/synflow_iterative/ratio{sparsity}/seed1/state_dict.pth",
-    "OMP": "pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar"
+    # "OMP": "pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar"
 }
 
 
@@ -17,9 +17,9 @@ def gen_commands_unlearn(rerun=False):
     pruning_methods = ["SynFlow"]#, "OMP"]
     commands = []
     sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "fisher_new".split(' ')  # fisher_new FT GA RL raw retrain
-    nums = [100, 4500, 2250, 450]
-    seeds = [1, 2, 3, 4, 5]
+    methods = "FT GA RL fisher_new retrain".split(' ')  # fisher_new FT GA RL raw retrain
+    nums = [4500]
+    seeds = [1,2,3,4,5]
 
     # dense
     for seed in seeds:
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     commands = gen_commands_unlearn(rerun=True)
     print(len(commands))
     run_commands(list(range(8)) * 3, commands, call=True,
-                 dir="commands_RL", shuffle=False, delay=0.5)
+                 dir="commands", shuffle=False, delay=0.5)
     # commands = gen_commands_debug_fisher()
     # print(len(commands))
     # run_commands(list(range(0, 8)) * 3, commands, call=True,
