@@ -147,9 +147,9 @@ def main():
         target_train = torch.utils.data.Subset(
             retain_dataset, list(range(num, retain_len)))
         shadow_test = torch.utils.data.Subset(
-            retain_dataset, list(range(num)))
+            test_loader.dataset, list(range(num)))
         target_test = torch.utils.data.Subset(
-            retain_dataset, list(range(num, test_len)))
+            test_loader.dataset, list(range(num, test_len)))
 
         shadow_train_loader = torch.utils.data.DataLoader(
             shadow_train, batch_size=args.batch_size, shuffle=False)
