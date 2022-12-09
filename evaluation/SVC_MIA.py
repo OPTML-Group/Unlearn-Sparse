@@ -19,7 +19,7 @@ def collect_prob(data_loader, model):
     with torch.no_grad():
         for batch in data_loader:
             batch = [tensor.to(next(model.parameters()).device)
-                    for tensor in batch]
+                     for tensor in batch]
             data, target = batch
 
             with torch.no_grad():
@@ -36,8 +36,10 @@ def SVC_fit_predict(shadow_train, shadow_test, target_train, target_test):
     n_target_train = target_train.shape[0]
     n_target_test = target_test.shape[0]
 
-    X_shadow = torch.cat([shadow_train, shadow_test]).cpu().numpy().reshape(n_shadow_train + n_shadow_test, -1)
-    Y_shadow = np.concatenate([np.ones(n_shadow_train), np.zeros(n_shadow_test)])
+    X_shadow = torch.cat([shadow_train, shadow_test]).cpu(
+    ).numpy().reshape(n_shadow_train + n_shadow_test, -1)
+    Y_shadow = np.concatenate(
+        [np.ones(n_shadow_train), np.zeros(n_shadow_test)])
 
     clf = SVC(C=3, gamma='auto', kernel='rbf')
     clf.fit(X_shadow, Y_shadow)

@@ -110,7 +110,8 @@ def plot_accuracy(evaluations, fout, has_stand=True):
 
 
 def plot_MIA(evaluations, fout, has_stand=True):
-    print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy SVC_MIA_forget_privacy'.split(' ')
+    print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy SVC_MIA_forget_privacy'.split(
+        ' ')
     print_suffixes = 'correctness confidence entropy'.split(' ')
     for pref in print_prefixes:
         for suff in print_suffixes:
