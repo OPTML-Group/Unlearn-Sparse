@@ -142,12 +142,14 @@ def main():
         utils.dataset_convert_to_test(forget_loader)
         utils.dataset_convert_to_test(test_loader)
 
-        shadow_train = torch.utils.data.Subset(retain_dataset, list(range(test_len)))
-        target_train = torch.utils.data.Subset(retain_dataset, list(range(test_len,retain_len)))
-        shadow_test = torch.utils.data.Subset(
+        shadow_train = torch.utils.data.Subset(
             retain_dataset, list(range(num)))
+        target_train = torch.utils.data.Subset(
+            retain_dataset, list(range(num, retain_len)))
+        shadow_test = torch.utils.data.Subset(
+            test_loader.dataset, list(range(num)))
         target_test = torch.utils.data.Subset(
-            retain_dataset, list(range(num, test_len)))
+            test_loader.dataset, list(range(num, test_len)))
 
         shadow_train_loader = torch.utils.data.DataLoader(
             shadow_train, batch_size=args.batch_size, shuffle=False)
@@ -160,8 +162,8 @@ def main():
             target_test, batch_size=args.batch_size, shuffle=False)
 
         evaluation_result['SVC_MIA_training_privacy'] = evaluation.SVC_MIA(
-            shadow_train=shadow_train_loader, shadow_test=test_loader,
-            target_train=target_train_loader, target_test=None,
+            shadow_train=shadow_train_loader, shadow_test=shadow_test_loader,
+            target_train=target_train_loader, target_test=target_test_loader,
             model=model)
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
     # if 'SVC_MIA_forget_privacy' not in evaluation_result:
