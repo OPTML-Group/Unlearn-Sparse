@@ -4,7 +4,7 @@ from .FT import FT
 from .fisher import fisher,fisher_new
 from .retrain import retrain
 from .impl import load_unlearn_checkpoint, save_unlearn_checkpoint
-
+from .Wfisher import Wfisher
 
 def raw(data_loaders, model, criterion, args):
     pass
@@ -28,5 +28,7 @@ def get_unlearn_method(name):
         return retrain
     elif name== "fisher_new":
         return fisher_new
+    elif name == "wfisher":
+        return Wfisher
     else:
         raise NotImplementedError(f"Unlearn method {name} not implemented!")
