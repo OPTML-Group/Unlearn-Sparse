@@ -7,7 +7,7 @@ import seaborn as sns
 import shutil
 
 sparsities = "0.0 0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-methods = "raw retrain FT RL fisher_new".split(' ')  # fisher
+methods = "raw retrain FT RL fisher_new".split(' ')  # raw FT retrain fisher_new RL
 nums = [100, 450, 2250, 4500]
 seeds = list(range(1, 11))
 metrics = ['accuracy_retain',
@@ -112,7 +112,7 @@ def plot_accuracy(evaluations, fout, has_stand=True):
 def plot_MIA(evaluations, fout, has_stand=True):
     print_prefixes = 'SVC_MIA_forget_efficacy SVC_MIA_training_privacy SVC_MIA_forget_privacy'.split(
         ' ')
-    print_suffixes = 'correctness confidence entropy'.split(' ')
+    print_suffixes = 'correctness confidence entropy prob m_entropy'.split(' ')
     for pref in print_prefixes:
         for suff in print_suffixes:
             metric = f'{pref}_{suff}'
@@ -158,7 +158,8 @@ def plot_efficacy(evaluations):
             plt.clf()
             for sparsity in sparsities:
                 eff = evaluations[(metric, num, unlearn, sparsity)]
-                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                mia = evaluations[(
+                    "SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
                 ax = sns.scatterplot(x=eff, y=mia)
 
             ax.set_xscale('log')
@@ -174,7 +175,8 @@ def plot_efficacy(evaluations):
             plt.clf()
             for id, sparsity in enumerate(sparsities):
                 eff = evaluations[(metric, num, unlearn, sparsity)]
-                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                mia = evaluations[(
+                    "SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
                 ax = sns.scatterplot(x=eff, y=[id] * len(eff))
 
             ax.set_xscale('log')
@@ -204,7 +206,8 @@ def plot_efficacy(evaluations):
             plt.clf()
             for unlearn in methods:
                 eff = evaluations[(metric, num, unlearn, sparsity)]
-                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                mia = evaluations[(
+                    "SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
                 ax = sns.scatterplot(x=eff, y=mia)
 
             ax.set_xscale('log')
@@ -221,7 +224,8 @@ def plot_efficacy(evaluations):
             plt.clf()
             for id, unlearn in enumerate(methods):
                 eff = evaluations[(metric, num, unlearn, sparsity)]
-                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                mia = evaluations[(
+                    "SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
                 ax = sns.scatterplot(x=eff, y=[id] * len(eff))
 
             ax.set_xscale('log')
