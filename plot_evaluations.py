@@ -7,9 +7,9 @@ import seaborn as sns
 import shutil
 
 sparsities = "0.0 0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-methods = "raw retrain FT GA RL".split(' ')  # fisher
+methods = "raw retrain FT RL fisher_new".split(' ')  # fisher
 nums = [100, 450, 2250, 4500]
-seeds = [1, 2, 3, 4, 5]
+seeds = list(range(1, 11))
 metrics = ['accuracy_retain',
            'accuracy_forget',
            'accuracy_val',
@@ -25,7 +25,7 @@ metrics = ['accuracy_retain',
            'SVC_MIA_forget_privacy_confidence',
            'SVC_MIA_forget_privacy_entropy']
 pruning_methods = ["SynFlow", "OMP"]
-pruning_method = pruning_methods[1]
+pruning_method = pruning_methods[0]
 
 
 def update_dict(obj, key, value):
@@ -154,7 +154,37 @@ def plot_efficacy(evaluations):
             name = f'efficacy_vs_sparsity_{unlearn}.png'
             plt.savefig(os.path.join(dir, name))
 
-        # efficacy dist vs sparsity
+        for unlearn in methods:
+            plt.clf()
+            for sparsity in sparsities:
+                eff = evaluations[(metric, num, unlearn, sparsity)]
+                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                ax = sns.scatterplot(x=eff, y=mia)
+
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.set_xlabel('Efficacy')
+            ax.set_ylabel('MIA prob')
+            ax.legend(sparsities)
+            ax.set_title(f"Scrub {num}, {unlearn} efficacy score vs sparsity")
+            name = f'MIA_efficacy_vs_sparsity_{unlearn}.png'
+            plt.savefig(os.path.join(dir, name))
+
+        for unlearn in methods:
+            plt.clf()
+            for id, sparsity in enumerate(sparsities):
+                eff = evaluations[(metric, num, unlearn, sparsity)]
+                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                ax = sns.scatterplot(x=eff, y=[id] * len(eff))
+
+            ax.set_xscale('log')
+            ax.set_xlabel('Efficacy')
+            ax.legend(sparsities)
+            ax.set_title(f"Scrub {num}, {unlearn} efficacy score vs sparsity")
+            name = f'grouped_efficacy_vs_sparsity_{unlearn}.png'
+            plt.savefig(os.path.join(dir, name))
+
+        # efficacy dist vs method
         for sparsity in sparsities:
             plt.clf()
             for unlearn in methods:
@@ -168,6 +198,38 @@ def plot_efficacy(evaluations):
             ax.set_title(
                 f"Scrub {num}, {sparsity} sparsity efficacy score vs unlearn methods")
             name = f'efficacy_vs_methods_{sparsity}.png'
+            plt.savefig(os.path.join(dir, name))
+
+        for sparsity in sparsities:
+            plt.clf()
+            for unlearn in methods:
+                eff = evaluations[(metric, num, unlearn, sparsity)]
+                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                ax = sns.scatterplot(x=eff, y=mia)
+
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.set_xlabel('Efficacy')
+            ax.set_ylabel('MIA prob')
+            ax.legend(methods)
+            ax.set_title(
+                f"Scrub {num}, {sparsity} sparsity efficacy score vs unlearn methods")
+            name = f'MIA_efficacy_vs_methods_{sparsity}.png'
+            plt.savefig(os.path.join(dir, name))
+
+        for sparsity in sparsities:
+            plt.clf()
+            for id, unlearn in enumerate(methods):
+                eff = evaluations[(metric, num, unlearn, sparsity)]
+                mia = evaluations[("SVC_MIA_forget_efficacy_entropy", num, unlearn, sparsity)]
+                ax = sns.scatterplot(x=eff, y=[id] * len(eff))
+
+            ax.set_xscale('log')
+            ax.set_xlabel('Efficacy')
+            ax.legend(methods)
+            ax.set_title(
+                f"Scrub {num}, {sparsity} sparsity efficacy score vs unlearn methods")
+            name = f'grouped_efficacy_vs_methods_{sparsity}.png'
             plt.savefig(os.path.join(dir, name))
 
 

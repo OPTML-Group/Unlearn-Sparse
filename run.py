@@ -13,24 +13,25 @@ mask_format = {
 }
 
 
-def gen_commands_unlearn(rerun=False):
-    pruning_methods = ["SynFlow"]#, "OMP"]
+def gen_commands_unlearn(rerun=False, dense=False):
+    pruning_methods = ["SynFlow"]  # , "OMP"]
     commands = []
-    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "fisher_new".split(' ')  # fisher_new FT GA RL raw retrain
+    sparsities = "0.7 0.8 0.85 0.97".split(' ')# "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    methods = "fisher_new FT RL raw retrain".split(' ')  # fisher_new FT GA RL raw retrain
     nums = [100, 4500, 2250, 450]
-    seeds = [1, 2, 3, 4, 5]
+    seeds = list(range(1, 6))
 
     # dense
-    for seed in seeds:
-        for num in nums:
-            for unlearn in methods:
-                command = f"python -u main_forget.py --save_dir unlearn_results/dense/{unlearn}_{num}/seed{seed} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed}"
-                if unlearn in params:
-                    command = command + ' ' + params[unlearn]
-                if not rerun:
-                    command = command + ' --resume'
-                commands.append(command)
+    if dense:
+        for seed in seeds:
+            for num in nums:
+                for unlearn in methods:
+                    command = f"python -u main_forget.py --save_dir unlearn_results/dense/{unlearn}_{num}/seed{seed} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed}"
+                    if unlearn in params:
+                        command = command + ' ' + params[unlearn]
+                    if not rerun:
+                        command = command + ' --resume'
+                    commands.append(command)
 
     # pruned
     for pruning_method in pruning_methods:
@@ -54,7 +55,7 @@ def gen_commands_debug_fisher():
     methods = "fisher_new".split(' ')  # fisher FT GA RL raw retrain
     nums = [100, 2250, 450, 4500]
     alphas = [2e-8, 22e-9, 24e-9, 25e-9, 26e-9, 28e-9, 3e-8]
-    for seed in [1,2,3,4,5]:
+    for seed in [1, 2, 3, 4, 5]:
         for alpha in alphas:
             for num in nums:
                 for unlearn in methods:
@@ -64,9 +65,9 @@ def gen_commands_debug_fisher():
 
 
 if __name__ == "__main__":
-    commands = gen_commands_unlearn(rerun=True)
+    commands = gen_commands_unlearn(rerun=False, dense=True)
     print(len(commands))
-    run_commands(list(range(8)) * 3, commands, call=True,
+    run_commands(list(range(8)) * 4, commands, call=True,
                  dir="commands_RL", shuffle=False, delay=0.5)
     # commands = gen_commands_debug_fisher()
     # print(len(commands))
