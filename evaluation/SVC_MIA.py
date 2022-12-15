@@ -7,15 +7,19 @@ import torch.nn.functional as F
 def entropy(p, dim=-1, keepdim=False):
     return -torch.where(p > 0, p * p.log(), p.new([0.0])).sum(dim=dim, keepdim=keepdim)
 
-def m_entropy(p,labels,dim=-1,keepdim=False):
-    log_prob = torch.where(p>0,p.log(),torch.tensor(1e-30).to(p.device).log())
+
+def m_entropy(p, labels, dim=-1, keepdim=False):
+    log_prob = torch.where(
+        p > 0, p.log(), torch.tensor(1e-30).to(p.device).log())
     reverse_prob = 1-p
-    log_reverse_prob = torch.where(p>0,p.log(),torch.tensor(1e-30).to(p.device).log())
+    log_reverse_prob = torch.where(
+        p > 0, p.log(), torch.tensor(1e-30).to(p.device).log())
     modified_probs = p.clone()
-    modified_probs[:,labels] = reverse_prob[:,labels]
+    modified_probs[:, labels] = reverse_prob[:, labels]
     modified_log_probs = log_reverse_prob.clone()
-    modified_log_probs[:,labels] = log_prob[:,labels]
-    return -torch.sum(modified_probs*modified_log_probs,dim=dim,keepdim=keepdim)
+    modified_log_probs[:, labels] = log_prob[:, labels]
+    return -torch.sum(modified_probs*modified_log_probs, dim=dim, keepdim=keepdim)
+
 
 def collect_prob(data_loader, model):
     if data_loader is None:
@@ -28,7 +32,7 @@ def collect_prob(data_loader, model):
     with torch.no_grad():
         for batch in data_loader:
             batch = [tensor.to(next(model.parameters()).device)
-                    for tensor in batch]
+                     for tensor in batch]
             data, target = batch
 
             with torch.no_grad():
@@ -45,8 +49,10 @@ def SVC_fit_predict(shadow_train, shadow_test, target_train, target_test):
     n_target_train = target_train.shape[0]
     n_target_test = target_test.shape[0]
 
-    X_shadow = torch.cat([shadow_train, shadow_test]).cpu().numpy().reshape(n_shadow_train + n_shadow_test, -1)
-    Y_shadow = np.concatenate([np.ones(n_shadow_train), np.zeros(n_shadow_test)])
+    X_shadow = torch.cat([shadow_train, shadow_test]).cpu(
+    ).numpy().reshape(n_shadow_train + n_shadow_test, -1)
+    Y_shadow = np.concatenate(
+        [np.ones(n_shadow_train), np.zeros(n_shadow_test)])
 
     clf = SVC(C=3, gamma='auto', kernel='rbf')
     clf.fit(X_shadow, Y_shadow)
@@ -97,17 +103,16 @@ def SVC_MIA(shadow_train, target_train, target_test, shadow_test, model):
     target_train_entr = entropy(target_train_prob)
     target_test_entr = entropy(target_test_prob)
 
-    shadow_train_m_entr = m_entropy(shadow_train_prob,shadow_train_labels)
-    shadow_test_m_entr = m_entropy(shadow_test_prob,shadow_test_labels)
+    shadow_train_m_entr = m_entropy(shadow_train_prob, shadow_train_labels)
+    shadow_test_m_entr = m_entropy(shadow_test_prob, shadow_test_labels)
     if target_train is not None:
-        target_train_m_entr = m_entropy(target_train_prob,target_train_labels)
+        target_train_m_entr = m_entropy(target_train_prob, target_train_labels)
     else:
         target_train_m_entr = target_train_entr
     if target_test is not None:
-        target_test_m_entr = m_entropy(target_test_prob,target_test_labels)
+        target_test_m_entr = m_entropy(target_test_prob, target_test_labels)
     else:
         target_test_m_entr = target_test_entr
-
 
     acc_corr = SVC_fit_predict(
         shadow_train_corr, shadow_test_corr, target_train_corr, target_test_corr)
@@ -115,10 +120,14 @@ def SVC_MIA(shadow_train, target_train, target_test, shadow_test, model):
         shadow_train_conf, shadow_test_conf, target_train_conf, target_test_conf)
     acc_entr = SVC_fit_predict(
         shadow_train_entr, shadow_test_entr, target_train_entr, target_test_entr)
-    acc_prob = SVC_fit_predict(
-        shadow_train_m_entr, shadow_test_m_entr, target_train_m_entr, target_test_m_entr)
     acc_m_entr = SVC_fit_predict(
+        shadow_train_m_entr, shadow_test_m_entr, target_train_m_entr, target_test_m_entr)
+    acc_prob = SVC_fit_predict(
         shadow_train_prob, shadow_test_prob, target_train_prob, target_test_prob)
-    m = {"correctness": acc_corr, "confidence": acc_conf, "entropy": acc_entr,"prob":acc_prob,"m_entropy":acc_m_entr}
+    m = {"correctness": acc_corr,
+         "confidence": acc_conf,
+         "entropy": acc_entr,
+         "m_entropy": acc_m_entr,
+         "prob": acc_prob}
     print(m)
     return m
