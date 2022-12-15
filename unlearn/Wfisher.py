@@ -42,7 +42,7 @@ def woodfisher(model,train_dl,device,criterion,v):
 def Wfisher(data_loaders,model,criterion,args):
     retain_loader = data_loaders["retain"]
     forget_loader = data_loaders["forget"]
-    retain_loader = torch.utils.data.DataLoader(retain_loader.dataset, batch_size=32, shuffle=False)
+    retain_loader = torch.utils.data.DataLoader(retain_loader.dataset, batch_size=1, shuffle=False)
     forget_loader = torch.utils.data.DataLoader(forget_loader.dataset, batch_size=128, shuffle=False)
     device = f"cuda:{int(args.gpu)}" if torch.cuda.is_available() else "cpu"
     params = []
