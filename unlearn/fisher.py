@@ -1,4 +1,3 @@
-from sre_constants import SUCCESS
 import torch
 from torch.autograd import grad
 from tqdm import tqdm

@@ -5,7 +5,8 @@ params = {
     "GA": "--epoch 5 --lr 0.001",
     "RL": "--epoch 10 --lr 0.01",
     "fisher_new": "--alpha 3e-8 --no-aug",
-    "fisher": "--alpha 1e-6 --no-aug"
+    "fisher": "--alpha 1e-6 --no-aug",
+    "wfisher": "--alpha 1 --no-aug"
 }
 mask_format = {
     "SynFlow": "pruning_models/synflow_iterative/ratio{sparsity}/seed1/state_dict.pth",
@@ -16,8 +17,8 @@ mask_format = {
 def gen_commands_unlearn(rerun=False, dense=False):
     pruning_methods = ["SynFlow"]  # , "OMP"]
     commands = []
-    sparsities = "0.7 0.8 0.85 0.97".split(' ')# "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "fisher_new FT RL raw retrain".split(' ')  # fisher_new FT GA RL raw retrain
+    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')# "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    methods = "wfisher".split(' ')  # fisher_new FT RL raw retrain
     nums = [100, 4500, 2250, 450]
     seeds = list(range(1, 6))
 
@@ -52,24 +53,24 @@ def gen_commands_unlearn(rerun=False, dense=False):
 
 def gen_commands_debug_fisher():
     commands = []
-    methods = "fisher_new".split(' ')  # fisher FT GA RL raw retrain
-    nums = [100, 2250, 450, 4500]
-    alphas = [2e-8, 22e-9, 24e-9, 25e-9, 26e-9, 28e-9, 3e-8]
-    for seed in [1, 2, 3, 4, 5]:
+    methods = "wfisher".split(' ')  # fisher FT GA RL raw retrain
+    nums = [100, 450, 2250, 4500]
+    alphas = [1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6]
+    for seed in [1, 2, 3]:
         for alpha in alphas:
             for num in nums:
                 for unlearn in methods:
-                    command = f"python -u main_forget.py --save_dir unlearn_results/debug_32/{unlearn}_{num}_{alpha}_{seed} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --alpha {alpha} --no-aug"
+                    command = f"python -u main_forget.py --save_dir unlearn_results/debug_w/{unlearn}_{num}_{alpha}_{seed} --mask pruning_models/dense/seed1/state_dict.pth --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --alpha {alpha} --no-aug"
                     commands.append(command)
     return commands
 
 
 if __name__ == "__main__":
-    commands = gen_commands_unlearn(rerun=False, dense=True)
-    print(len(commands))
-    run_commands(list(range(8)) * 4, commands, call=True,
-                 dir="commands_RL", shuffle=False, delay=0.5)
-    # commands = gen_commands_debug_fisher()
+    # commands = gen_commands_unlearn(rerun=False, dense=True)
     # print(len(commands))
-    # run_commands(list(range(0, 8)) * 3, commands, call=True,
-    #              dir="commands", shuffle=False, delay=0.5)
+    # run_commands(list(range(8)) * 4, commands, call=False,
+    #              dir="commands_RL", shuffle=False, delay=0.5)
+    commands = gen_commands_debug_fisher()
+    print(len(commands))
+    run_commands(list(range(0, 8)) * 3, commands, call=True,
+                 dir="commands", shuffle=False, delay=0.5)
