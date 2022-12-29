@@ -39,11 +39,6 @@ def woodfisher(model,train_dl,device,criterion,v):
             o_vec -= (tmp / (N + tmp)) * o_vec
     return k_vec
 
-def Wfisher(data_loaders,model,criterion,args):
-    retain_loader = data_loaders["retain"]
-    forget_loader = data_loaders["forget"]
-    retain_loader = torch.utils.data.DataLoader(retain_loader.dataset, batch_size=1, shuffle=False)
-    forget_loader = torch.utils.data.DataLoader(forget_loader.dataset, batch_size=128, shuffle=False)
 
 def sam_grad(model, loss):
     params = []
@@ -88,6 +83,8 @@ def woodfisher(model, train_dl, device, criterion, v):
 def Wfisher(data_loaders, model, criterion, args):
     retain_loader = data_loaders["retain"]
     forget_loader = data_loaders["forget"]
+    retain_grad_loader = torch.utils.data.DataLoader(
+        retain_loader.dataset, batch_size=128, shuffle=False)
     retain_loader = torch.utils.data.DataLoader(
         retain_loader.dataset, batch_size=1, shuffle=False)
     forget_loader = torch.utils.data.DataLoader(
@@ -97,6 +94,7 @@ def Wfisher(data_loaders, model, criterion, args):
     for param in model.parameters():
         params.append(param.view(-1))
     forget_grad = torch.zeros_like(torch.cat(params)).to(device)
+    retain_grad = torch.zeros_like(torch.cat(params)).to(device)
     total = 0
     model.eval()
     for i, (data, label) in enumerate(tqdm(forget_loader)):
@@ -109,11 +107,23 @@ def Wfisher(data_loaders, model, criterion, args):
         f_grad = sam_grad(model, loss)*real_num
         forget_grad += f_grad
         total += real_num
-    forget_grad /= total
-
+    
+    total_2 = 0
+    for i, (data, label) in enumerate(tqdm(retain_grad_loader)):
+        model.zero_grad()
+        real_num = data.shape[0]
+        data = data.to(device)
+        label = label.to(device)
+        output = model(data)
+        loss = criterion(output, label)
+        r_grad = sam_grad(model, loss)*real_num
+        retain_grad += r_grad
+        total_2 += real_num
+    retain_grad *= (total/((total+total_2)*total_2))
+    forget_grad /= total+total_2
     perturb = woodfisher(model, retain_loader, device=device,
-                         criterion=criterion, v=forget_grad)
+                         criterion=criterion, v=forget_grad-retain_grad)
 
-    apply_perturb(model, args.alpha * perturb)
+    apply_perturb(model, args.alpha*perturb)
 
     return model
