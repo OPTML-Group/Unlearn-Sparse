@@ -3,10 +3,11 @@ import copy
 import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
-
+from torch.nn import Conv2d
+from torch.autograd import grad
 
 __all__ = ['pruning_model', 'pruning_model_random', 'prune_model_custom', 'remove_prune',
-           'extract_mask', 'reverse_mask', 'check_sparsity', 'check_sparsity_dict']
+           'extract_mask', 'reverse_mask', 'check_sparsity', 'check_sparsity_dict','global_prune_model']
 
 
 # Pruning operation
@@ -172,3 +173,153 @@ def check_sparsity_dict(state_dict):
         remain_weight_ratie = None
 
     return remain_weight_ratie
+
+
+
+def fetch_data(dataloader, num_classes, samples_per_class):
+    datas = [[] for _ in range(num_classes)]
+    labels = [[] for _ in range(num_classes)]
+    mark = dict()
+    dataloader_iter = iter(dataloader)
+    while True:
+        inputs, targets = next(dataloader_iter)
+        for idx in range(inputs.shape[0]):
+            x, y = inputs[idx:idx+1], targets[idx:idx+1]
+            category = y.item()
+            if len(datas[category]) == samples_per_class:
+                mark[category] = True
+                continue
+            datas[category].append(x)
+            labels[category].append(y)
+        if len(mark) == num_classes:
+            break
+    X, y = torch.cat([torch.cat(_, 0) for _ in datas]), torch.cat([torch.cat(_) for _ in labels]).view(-1)
+    return X, y
+
+
+def mp_importance_score(model):
+    score_dict = {}
+    for m in model.modules():
+        if isinstance(m, (Conv2d,)):
+            score_dict[(m, 'weight')] = m.weight.data.abs()
+    return score_dict
+
+def snip_importance_score(
+    model,
+    dataloader, 
+    samples_per_class,
+    loss_func = torch.nn.CrossEntropyLoss()
+    ):
+
+    score_dict = {}
+    model.zero_grad()
+    device = next(model.parameters()).device
+    x, y = fetch_data(dataloader, model.fc.out_features, samples_per_class)
+    x, y = x.to(device), y.to(device)
+    loss = loss_func(model(x), y)
+    loss.backward()
+    for m in model.modules():
+        if isinstance(m, (Conv2d,)):
+            score_dict[(m, 'weight')] = m.weight.grad.data.abs()
+    model.zero_grad()
+    return score_dict
+
+
+def grasp_importance_score(
+    model,
+    dataloader, 
+    samples_per_class,
+    loss_func = torch.nn.CrossEntropyLoss()
+    ):
+
+    score_dict = {}
+    model.zero_grad()
+    device = next(model.parameters()).device
+    x, y = fetch_data(dataloader, model.fc.out_features, samples_per_class)
+    x, y = x.to(device), y.to(device)
+    loss = loss_func(model(x), y)
+    gs = grad(loss, model.parameters(), create_graph=True)
+    model.zero_grad()
+    t = sum([(g*g.data).sum() for g in gs])
+    t.backward()
+
+    for m in model.modules():
+        if isinstance(m, (Conv2d,)):
+            score_dict[(m, 'weight')] = -m.weight.data * m.weight.grad.data
+    model.zero_grad()
+    return score_dict
+
+
+def synflow_importance_score(
+    model,
+    dataloader,
+    ):
+    @torch.no_grad()
+    def linearize(model):
+        signs = {}
+        for name, param in model.state_dict().items():
+            signs[name] = torch.sign(param)
+            param.abs_()
+        return signs
+
+    @torch.no_grad()
+    def nonlinearize(model, signs):
+        # model.float()
+        for name, param in model.state_dict().items():
+            param.mul_(signs[name])
+
+    model.eval() # Crucial! BatchNorm will break the conservation laws for synaptic saliency
+    model.zero_grad()
+    score_dict = {}
+    signs = linearize(model)
+
+    (data, _) = next(iter(dataloader))
+    input_dim = list(data[0,:].shape)
+    input = torch.ones([1] + input_dim).to(next(model.parameters()).device)
+    output = model(input)
+    torch.sum(output).backward()
+
+    for m in model.modules():
+        if isinstance(m, (Conv2d,)):
+            if hasattr(m, "weight_orig"):
+                score_dict[(m, 'weight')] = (m.weight_orig.grad.data * m.weight.data).abs()
+            else:
+                score_dict[(m, 'weight')] = (m.weight.grad.data * m.weight.data).abs()
+    model.zero_grad()
+    nonlinearize(model, signs)
+    return score_dict
+
+
+def global_prune_model(model, ratio, method, dataloader=None, structured=False, sample_per_classes=25):
+    if method == 'mp':
+        score_dict = mp_importance_score(model)
+    elif method == 'snip':
+        score_dict = snip_importance_score(model, dataloader, sample_per_classes)
+    elif method == 'grasp':
+        score_dict = grasp_importance_score(model, dataloader, sample_per_classes)
+    elif method == 'synflow':
+        pass
+    else:
+        raise NotImplementedError(f'Pruning Method {method} not Implemented')
+
+    if method == 'synflow':
+        iteration_number = 100 # In SynFlow Paper, an iteration number of 100 performs well
+        each_ratio = 1 - (1-ratio)**(1/iteration_number)
+        for _ in range(iteration_number):
+            score_dict = synflow_importance_score(model, dataloader)
+            if structured:
+                pass
+            else:
+                prune.global_unstructured(
+                    parameters=score_dict.keys(),
+                    pruning_method=prune.L1Unstructured,
+                    amount=each_ratio,
+                    importance_scores=score_dict,
+                )
+    else:
+        prune.global_unstructured(
+            parameters=score_dict.keys(),
+            pruning_method=prune.L1Unstructured,
+            amount=ratio,
+            importance_scores=score_dict,
+        )
