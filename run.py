@@ -10,15 +10,16 @@ params = {
 }
 mask_format = {
     "SynFlow": "pruning_models/synflow_iterative/ratio{sparsity}/seed1/state_dict.pth",
-    "OMP": "pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar"
+    "OMP": "pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar",
+    "IMP": "pruning_models/IMP/ratio{sparsity}/model_SA_best.pth.tar"
 }
 
 
 def gen_commands_unlearn(rerun=False, dense=False):
-    pruning_methods = ["SynFlow"]  # , "OMP"]
+    pruning_methods = ["IMP"]  # , "OMP"]
     commands = []
     sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')# "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "wfisher".split(' ')  # fisher_new FT RL raw retrain
+    methods = "fisher_new FT RL raw retrain".split(' ')  # fisher_new FT RL raw retrain wfisher
     nums = [100, 4500, 2250, 450]
     seeds = list(range(1, 6))
 
@@ -53,7 +54,7 @@ def gen_commands_unlearn(rerun=False, dense=False):
 
 def gen_commands_debug_fisher():
     commands = []
-    methods = "wfisher".split(' ')  # fisher FT GA RL raw retrain
+    methods = "ihpv_woodfisher".split(' ')  # fisher FT GA RL raw retrain
     nums = [100, 450, 2250, 4500]
     alphas = [1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5, 5e-6, 1e-6]
     for seed in [1, 2, 3]:
@@ -66,11 +67,11 @@ def gen_commands_debug_fisher():
 
 
 if __name__ == "__main__":
-    # commands = gen_commands_unlearn(rerun=False, dense=True)
-    # print(len(commands))
-    # run_commands(list(range(8)) * 4, commands, call=False,
-    #              dir="commands_RL", shuffle=False, delay=0.5)
-    commands = gen_commands_debug_fisher()
+    commands = gen_commands_unlearn(rerun=False, dense=False)
     print(len(commands))
-    run_commands(list(range(0, 8)) * 3, commands, call=True,
-                 dir="commands", shuffle=False, delay=0.5)
+    run_commands(list(range(8)) * 4, commands, call=True,
+                 dir="commands_RL", shuffle=False, delay=0.5)
+    # commands = gen_commands_debug_fisher()
+    # print(len(commands))
+    # run_commands(list(range(0, 8)) * 3, commands, call=True,
+    #              dir="commands", shuffle=False, delay=0.5)
