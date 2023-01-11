@@ -88,7 +88,7 @@ def get_mean_var(p, args, is_base_dist=False):
     else:
         mu = copy.deepcopy(p.data0.clone())
 
-    if p.shape[0] == args.num_classes and args.num_indexes_to_replace == 4500:
+    if p.shape[0] == args.num_classes and ((args.num_indexes_to_replace == 4500 and args.dataset == "cifar10") or (args.num_indexes_to_replace == 450 and args.dataset == "cifar100")):
         mu[args.class_to_replace] = 0
         var[args.class_to_replace] = 0.0001
     if p.shape[0] == args.num_classes:

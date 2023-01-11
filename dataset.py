@@ -169,13 +169,17 @@ def cifar10_dataloaders_no_val(batch_size=128, data_dir='datasets/cifar10', num_
     return train_loader, val_loader, test_loader
 
 
-def cifar100_dataloaders(batch_size=128, data_dir='datasets/cifar100', num_workers=2):
-
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
+def cifar100_dataloaders(batch_size=128, data_dir='datasets/cifar100', num_workers=2, class_to_replace: int = None, num_indexes_to_replace=None, indexes_to_replace=None, seed: int = 1, only_mark: bool = False, shuffle=True, no_aug=False):
+    if no_aug:
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    else:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])
 
     test_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -184,20 +188,55 @@ def cifar100_dataloaders(batch_size=128, data_dir='datasets/cifar100', num_worke
     print('Dataset information: CIFAR-100\t 45000 images for training \t 500 images for validation\t')
     print('10000 images for testing\t no normalize applied in data_transform')
     print('Data augmentation = randomcrop(32,4) + randomhorizontalflip')
+    train_set = CIFAR100(data_dir, train=True,transform=train_transform, download=True)
 
-    train_set = Subset(CIFAR100(data_dir, train=True,
-                       transform=train_transform, download=True), list(range(45000)))
-    val_set = Subset(CIFAR100(data_dir, train=True, transform=test_transform,
-                     download=True), list(range(45000, 50000)))
-    test_set = CIFAR100(data_dir, train=False,
-                        transform=test_transform, download=True)
+    test_set = CIFAR100(data_dir, train=False,transform=test_transform, download=True)
+    train_set.targets = np.array(train_set.targets)
+    test_set.targets = np.array(test_set.targets)
 
-    train_loader = DataLoader(train_set, batch_size=batch_size,
-                              shuffle=True, num_workers=num_workers, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size,
-                            shuffle=False, num_workers=num_workers, pin_memory=True)
-    test_loader = DataLoader(test_set, batch_size=batch_size,
-                             shuffle=False, num_workers=num_workers, pin_memory=True)
+    rng = np.random.RandomState(seed)
+    valid_set = copy.deepcopy(train_set)
+    valid_idx = []
+    for i in range(max(train_set.targets) + 1):
+        class_idx = np.where(train_set.targets == i)[0]
+        valid_idx.append(rng.choice(class_idx, int(
+            0.1*len(class_idx)), replace=False))
+    valid_idx = np.hstack(valid_idx)
+    train_set_copy = copy.deepcopy(train_set)
+
+    valid_set.data = train_set_copy.data[valid_idx]
+    valid_set.targets = train_set_copy.targets[valid_idx]
+
+    train_idx = list(set(range(len(train_set)))-set(valid_idx))
+
+    train_set.data = train_set_copy.data[train_idx]
+    train_set.targets = train_set_copy.targets[train_idx]
+
+    if class_to_replace is not None and indexes_to_replace is not None:
+        raise ValueError(
+            "Only one of `class_to_replace` and `indexes_to_replace` can be specified")
+    if class_to_replace is not None:
+        replace_class(train_set, class_to_replace, num_indexes_to_replace=num_indexes_to_replace, seed=seed-1,
+                      only_mark=only_mark)
+        if num_indexes_to_replace is None:
+            test_set.data = test_set.data[test_set.targets != class_to_replace]
+            test_set.targets = test_set.targets[test_set.targets !=
+                                                class_to_replace]
+    if indexes_to_replace is not None:
+        replace_indexes(dataset=train_set, indexes=indexes_to_replace,
+                        seed=seed-1, only_mark=only_mark)
+
+    loader_args = {'num_workers': 0, 'pin_memory': False}
+
+    def _init_fn(worker_id):
+        np.random.seed(int(seed))
+
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
+                              worker_init_fn=_init_fn if seed is not None else None, **loader_args)
+    val_loader = DataLoader(valid_set, batch_size=batch_size, shuffle=False,
+                            worker_init_fn=_init_fn if seed is not None else None, **loader_args)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
+                             worker_init_fn=_init_fn if seed is not None else None, **loader_args)
 
     return train_loader, val_loader, test_loader
 

@@ -100,9 +100,17 @@ def setup_model_dataset(args):
         classes = 100
         normalization = NormalizeByChannelMeanStd(
             mean=[0.5071, 0.4866, 0.4409], std=[0.2673,	0.2564,	0.2762])
-        train_set_loader, val_loader, test_loader = cifar100_dataloaders(
+        train_full_loader, val_loader, test_loader = cifar100_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
-
+        marked_loader, _, _ = cifar100_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
+                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)        
+        if args.imagenet_arch:
+            model = model_dict[args.arch](num_classes=classes, imagenet=True)
+        else:
+            model = model_dict[args.arch](num_classes=classes)
+        model.normalize = normalization
+        print(model)
+        return model, train_full_loader, val_loader, test_loader, marked_loader
     elif args.dataset == 'TinyImagenet':
         classes = 200
         normalization = NormalizeByChannelMeanStd(
