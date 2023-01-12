@@ -2,35 +2,35 @@ import torch
 from torch.autograd import grad
 from tqdm import tqdm
 
-def sam_grad(model,loss):
+
+def sam_grad(model, loss):
     params = []
     for param in model.parameters():
         params.append(param)
-    sample_grad = grad(loss,params)
+    sample_grad = grad(loss, params)
     sample_grad = [x.view(-1) for x in sample_grad]
     return torch.cat(sample_grad)
 
-def apply_perturb(model,v):
-    curr = 0 
+
+def apply_perturb(model, v):
+    curr = 0
     for param in model.parameters():
         length = param.view(-1).shape[0]
         param.view(-1).data += v[curr:curr+length].data
         curr += length
 
 
-
-        
-def woodfisher(model,train_dl,device,criterion,v):
+def woodfisher(model, train_dl, device, criterion, v):
     model.eval()
     k_vec = torch.clone(v)
     N = len(train_dl)
-    
-    for idx,(data,label) in enumerate(tqdm(train_dl)):
+
+    for idx, (data, label) in enumerate(tqdm(train_dl)):
         data = data.to(device)
         label = label.to(device)
         output = model(data)
-        loss = criterion(output,label)
-        sample_grad = sam_grad(model,loss)  
+        loss = criterion(output, label)
+        sample_grad = sam_grad(model, loss)
         if idx == 0:
             o_vec = torch.clone(sample_grad)
         else:
@@ -61,8 +61,8 @@ def apply_perturb(model, v):
 def woodfisher(model, train_dl, device, criterion, v):
     model.eval()
     k_vec = torch.clone(v)
-    N = len(train_dl)
-
+    N = 1000
+    o_vec = None
     for idx, (data, label) in enumerate(tqdm(train_dl)):
         model.zero_grad()
         data = data.to(device)
@@ -71,12 +71,14 @@ def woodfisher(model, train_dl, device, criterion, v):
         loss = criterion(output, label)
         sample_grad = sam_grad(model, loss)
         with torch.no_grad():
-            if idx == 0:
+            if o_vec is None:
                 o_vec = torch.clone(sample_grad)
             else:
                 tmp = torch.dot(o_vec, sample_grad)
                 k_vec -= (torch.dot(k_vec, sample_grad) / (N + tmp)) * o_vec
                 o_vec -= (tmp / (N + tmp)) * o_vec
+        if idx > N:
+            return k_vec
     return k_vec
 
 
@@ -107,7 +109,7 @@ def Wfisher(data_loaders, model, criterion, args):
         f_grad = sam_grad(model, loss)*real_num
         forget_grad += f_grad
         total += real_num
-    
+
     total_2 = 0
     for i, (data, label) in enumerate(tqdm(retain_grad_loader)):
         model.zero_grad()
@@ -120,7 +122,7 @@ def Wfisher(data_loaders, model, criterion, args):
         retain_grad += r_grad
         total_2 += real_num
     retain_grad *= (total/((total+total_2)*total_2))
-    forget_grad /= total+total_2
+    forget_grad /= (total+total_2)
     perturb = woodfisher(model, retain_loader, device=device,
                          criterion=criterion, v=forget_grad-retain_grad)
 
