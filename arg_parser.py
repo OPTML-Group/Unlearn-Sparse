@@ -43,31 +43,37 @@ def parse_args():
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
     parser.add_argument('--weight_decay', default=5e-4,
                         type=float, help='weight decay')
-    parser.add_argument('--epochs', default=160, type=int,
+    parser.add_argument('--epochs', default=182, type=int,
                         help='number of total epochs to run')
     parser.add_argument('--warmup', default=0, type=int, help='warm up epochs')
     parser.add_argument('--print_freq', default=50,
                         type=int, help='print frequency')
-    parser.add_argument('--decreasing_lr', default='80,120',
+    parser.add_argument('--decreasing_lr', default='91,136',
                         help='decreasing strategy')
     parser.add_argument('--no-aug', action='store_true', default=False,
                         help='No augmentation in training dataset (transformation).')
 
     ##################################### Pruning setting #################################################
+    parser.add_argument('--prune', type=str, default="omp",
+                        help="method to prune")
     parser.add_argument('--pruning_times', default=1,
-                        type=int, help='overall times of pruning')
+                        type=int, help='overall times of pruning (only works for IMP)')
     parser.add_argument('--rate', default=0.2, type=float,
                         help='pruning rate')  # pruning rate is always 20%
-    parser.add_argument('--prune_type', default='lt', type=str,
+    parser.add_argument('--prune_type', default='rewind_lt', type=str,
                         help='IMP type (lt, pt or rewind_lt)')
     parser.add_argument('--random_prune', action='store_true',
                         help='whether using random prune')
-    parser.add_argument('--rewind_epoch', default=3,
+    parser.add_argument('--rewind_epoch', default=8,
                         type=int, help='rewind checkpoint')
 
-    ##################################### unlearn setting #################################################
+    ##################################### Unlearn setting #################################################
     parser.add_argument('--unlearn', type=str,
-                        default='retrain', help='methods to unlearn')
+                        default='retrain', help='method to unlearn')
+    parser.add_argument('--unlearn_lr', default=0.1, type=float,
+                        help='initial learning rate')
+    parser.add_argument('--unlearn_epochs', default=10, type=int,
+                        help='number of total epochs for unlearn to run')
     parser.add_argument('--num_indexes_to_replace', type=int, default=None,
                         help='Number of data to forget')
     parser.add_argument('--class_to_replace', type=int, default=0,
@@ -76,4 +82,10 @@ def parse_args():
                         help='Specific index data to forget')
     parser.add_argument('--alpha', default=0.2, type=float,
                         help='unlearn noise')
+
+    ##################################### Attack setting #################################################
+    parser.add_argument('--attack', type=str,
+                        default='backdoor', help='method to unlearn')
+    parser.add_argument('--trigger_size', type=int, default=4,
+                        help='The size of trigger of backdoor attack')
     return parser.parse_args()

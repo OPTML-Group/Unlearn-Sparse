@@ -1,6 +1,20 @@
 import utils
 import time
 
+import torch
+import copy
+import os
+
+
+def get_optimizer_and_scheduler(model, args):
+    decreasing_lr = list(map(int, args.decreasing_lr.split(',')))
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=decreasing_lr, gamma=0.1)
+    return optimizer, scheduler
+
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
 
@@ -48,3 +62,22 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     print('train_accuracy {top1.avg:.3f}'.format(top1=top1))
 
     return top1.avg
+
+
+def train_with_rewind(model, optimizer, scheduler, train_loader, criterion, args):
+    for epoch in range(args.epochs):
+        start_time = time.time()
+        print(optimizer.state_dict()['param_groups'][0]['lr'])
+        train(train_loader, model,
+              criterion, optimizer, epoch, args)
+
+        if (epoch+1) == args.rewind_epoch:
+            torch.save(model.state_dict(), os.path.join(
+                args.save_dir, 'epoch_{}_rewind_weight.pt'.format(epoch+1)))
+            if args.prune_type == 'rewind_lt':
+                rewind_state_dict = copy.deepcopy(model.state_dict())
+
+        scheduler.step()
+        print("one epoch duration:{}".format(time.time()-start_time))
+
+    return rewind_state_dict

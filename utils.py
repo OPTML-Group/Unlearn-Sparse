@@ -103,7 +103,7 @@ def setup_model_dataset(args):
         train_full_loader, val_loader, test_loader = cifar100_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         marked_loader, _, _ = cifar100_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
-                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)        
+                                                   num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:
@@ -237,3 +237,52 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
         if call:
             os.system("bash {}&".format(sh_path))
             time.sleep(delay)
+
+
+def get_loader_from_dataset(dataset, batch_size, seed=1, shuffle=True):
+    setup_seed(seed)
+    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=0, pin_memory=True, shuffle=shuffle)
+
+
+def get_unlearn_loader(marked_loader, args):
+    forget_dataset = copy.deepcopy(marked_loader.dataset)
+    marked = forget_dataset.targets < 0
+    forget_dataset.data = forget_dataset.data[marked]
+    forget_dataset.targets = - forget_dataset.targets[marked] - 1
+    forget_loader = get_loader_from_dataset(
+        forget_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=True)
+    retain_dataset = copy.deepcopy(marked_loader.dataset)
+    marked = retain_dataset.targets >= 0
+    retain_dataset.data = retain_dataset.data[marked]
+    retain_dataset.targets = retain_dataset.targets[marked]
+    retain_loader = get_loader_from_dataset(
+        retain_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=True)
+    print("datasets length: ", len(forget_dataset), len(retain_dataset))
+    return forget_loader, retain_loader
+
+
+def get_poisoned_loader(poison_loader, unpoison_loader, test_loader, poison_func, args):
+    poison_dataset = copy.deepcopy(poison_loader.dataset)
+    poison_test_dataset = copy.deepcopy(test_loader.dataset)
+
+    poison_dataset.data, poison_dataset.targets = poison_func(
+        poison_dataset.data, poison_dataset.targets)
+    poison_test_dataset.data, poison_test_dataset.targets = poison_func(
+        poison_test_dataset.data, poison_test_dataset.targets)
+
+    full_dataset = torch.utils.data.ConcatDataset(
+        [unpoison_loader.dataset, poison_dataset])
+    # full_dataset = copy.deepcopy(poison_dataset)
+    # full_dataset.data = np.concatenate(
+    #     [unpoison_loader.dataset.data, poison_dataset.data], axis=0)
+    # full_dataset.targets = np.concatenate(
+    #     [unpoison_loader.dataset.targets, poison_dataset.targets], axis=0)
+
+    poisoned_loader = get_loader_from_dataset(
+        poison_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=False)
+    poisoned_full_loader = get_loader_from_dataset(
+        full_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=True)
+    poisoned_test_loader = get_loader_from_dataset(
+        poison_test_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=False)
+
+    return poisoned_loader, unpoison_loader, poisoned_full_loader, poisoned_test_loader

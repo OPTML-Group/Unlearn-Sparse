@@ -1,9 +1,10 @@
 from utils import run_commands
 
 params = {
-    "FT": "--epoch 10 --lr 0.01",
-    "GA": "--epoch 5 --lr 0.001",
-    "RL": "--epoch 10 --lr 0.01",
+    "FT": "--unlearn_epochs 10 --unlearn_lr 0.01",
+    "GA": "--unlearn_epochs 5 --unlearn_lr 0.001",
+    "RL": "--unlearn_epochs 10 --unlearn_lr 0.01",
+    "retrain": "--unlearn_epochs 160",
     "fisher_new": "--alpha 3e-8 --no-aug",
     "fisher": "--alpha 1e-6 --no-aug",
     "wfisher": "--alpha 1 --no-aug"
@@ -18,8 +19,10 @@ mask_format = {
 def gen_commands_unlearn(rerun=False, dense=False):
     pruning_methods = ["IMP"]  # , "OMP"]
     commands = []
-    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')# "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    methods = "fisher_new FT RL raw retrain".split(' ')  # fisher_new FT RL raw retrain wfisher
+    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(
+        ' ')  # "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    methods = "fisher_new FT RL raw retrain".split(
+        ' ')  # fisher_new FT RL raw retrain wfisher
     nums = [100, 4500, 2250, 450]
     seeds = list(range(1, 6))
 
@@ -66,12 +69,43 @@ def gen_commands_debug_fisher():
     return commands
 
 
+def gen_commands_backdoor(rerun=False):
+    pruning_methods = ["synflow", "omp"]
+    commands = []
+    # "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    sparsities = "0 0.5 0.75 0.9 0.95 0.99".split(' ')
+    methods = "FT".split(' ')  # fisher_new FT RL raw retrain wfisher
+    nums = [4500, 450, 2250]
+    trigger_sizes = [4, 2, 6]
+    seeds = list(range(1, 2))
+
+    for prune in pruning_methods:
+        for sparsity in sparsities:
+            for seed in seeds:
+                for trigger in trigger_sizes:
+                    for num in nums:
+                        for unlearn in methods:
+                            command = f"python -u main_backdoor.py --save_dir backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --prune {prune} --rate {sparsity} --trigger_size {trigger}"
+                            if unlearn in params:
+                                command = command + ' ' + params[unlearn]
+                            if not rerun:
+                                command = command + ' --resume'
+                            commands.append(command)
+    return commands
+
+
 if __name__ == "__main__":
-    commands = gen_commands_unlearn(rerun=False, dense=False)
-    print(len(commands))
-    run_commands(list(range(8)) * 4, commands, call=True,
-                 dir="commands_RL", shuffle=False, delay=0.5)
+    # commands = gen_commands_unlearn(rerun=False, dense=False)
+    # print(len(commands))
+    # run_commands(list(range(8)) * 4, commands, call=True,
+    #              dir="commands_RL", shuffle=False, delay=0.5)
+
     # commands = gen_commands_debug_fisher()
     # print(len(commands))
     # run_commands(list(range(0, 8)) * 3, commands, call=True,
     #              dir="commands", shuffle=False, delay=0.5)
+
+    commands = gen_commands_backdoor(rerun=True)
+    print(len(commands))
+    run_commands(list(range(6)) * 4, commands, call=True,
+                 dir="commands_attack", shuffle=False, delay=0.5)

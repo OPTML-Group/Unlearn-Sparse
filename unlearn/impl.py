@@ -2,10 +2,8 @@ import torch
 import time
 import os
 import matplotlib.pyplot as plt
-from collections import OrderedDict
 
 import pruner
-from trainer import validate
 import utils
 
 
@@ -52,7 +50,7 @@ def load_unlearn_checkpoint(model, device, args):
 def _iterative_unlearn_impl(unlearn_iter_func):
     def _wrapped(data_loaders, model, criterion, args):
         decreasing_lr = list(map(int, args.decreasing_lr.split(',')))
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+        optimizer = torch.optim.SGD(model.parameters(), args.unlearn_lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
@@ -61,7 +59,7 @@ def _iterative_unlearn_impl(unlearn_iter_func):
         # results = OrderedDict((name, []) for name in data_loaders.keys())
         # results['train'] = []
 
-        for epoch in range(0, args.epochs):
+        for epoch in range(0, args.unlearn_epochs):
             start_time = time.time()
             print("Epoch #{}, Learning rate: {}".format(
                 epoch, optimizer.state_dict()['param_groups'][0]['lr']))

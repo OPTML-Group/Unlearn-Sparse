@@ -188,9 +188,11 @@ def cifar100_dataloaders(batch_size=128, data_dir='datasets/cifar100', num_worke
     print('Dataset information: CIFAR-100\t 45000 images for training \t 500 images for validation\t')
     print('10000 images for testing\t no normalize applied in data_transform')
     print('Data augmentation = randomcrop(32,4) + randomhorizontalflip')
-    train_set = CIFAR100(data_dir, train=True,transform=train_transform, download=True)
+    train_set = CIFAR100(data_dir, train=True,
+                         transform=train_transform, download=True)
 
-    test_set = CIFAR100(data_dir, train=False,transform=test_transform, download=True)
+    test_set = CIFAR100(data_dir, train=False,
+                        transform=test_transform, download=True)
     train_set.targets = np.array(train_set.targets)
     test_set.targets = np.array(test_set.targets)
 
@@ -486,7 +488,10 @@ def replace_indexes(dataset: torch.utils.data.Dataset, indexes, seed=0,
 
 def replace_class(dataset: torch.utils.data.Dataset, class_to_replace: int, num_indexes_to_replace: int = None,
                   seed: int = 0, only_mark: bool = False):
-    indexes = np.flatnonzero(np.array(dataset.targets) == class_to_replace)
+    if class_to_replace == -1:
+        indexes = np.flatnonzero(np.ones_like(dataset.targets))
+    else:
+        indexes = np.flatnonzero(np.array(dataset.targets) == class_to_replace)
     if num_indexes_to_replace is not None:
         assert num_indexes_to_replace <= len(
             indexes), f"Want to replace {num_indexes_to_replace} indexes but only {len(indexes)} samples in dataset"
