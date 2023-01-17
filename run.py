@@ -70,21 +70,20 @@ def gen_commands_debug_fisher():
 
 
 def gen_commands_backdoor(rerun=False):
-    pruning_methods = ["synflow", "omp"]
     commands = []
-    # "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    pruning_methods = ["synflow", "omp"]
     sparsities = "0 0.5 0.75 0.9 0.95 0.99".split(' ')
     methods = "FT".split(' ')  # fisher_new FT RL raw retrain wfisher
     nums = [4500, 450, 2250]
-    trigger_sizes = [4, 2, 6]
-    seeds = list(range(1, 2))
+    trigger_sizes = [6, 4, 2]  # 4, 2
+    seeds = list(range(2, 4))
 
     for prune in pruning_methods:
         for sparsity in sparsities:
-            for seed in seeds:
-                for trigger in trigger_sizes:
-                    for num in nums:
-                        for unlearn in methods:
+            for trigger in trigger_sizes:
+                for num in nums:
+                    for unlearn in methods:
+                        for seed in seeds:
                             command = f"python -u main_backdoor.py --save_dir backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --prune {prune} --rate {sparsity} --trigger_size {trigger}"
                             if unlearn in params:
                                 command = command + ' ' + params[unlearn]
@@ -92,6 +91,19 @@ def gen_commands_backdoor(rerun=False):
                                 command = command + ' --resume'
                             commands.append(command)
     return commands
+
+def gen_commands_eigen(rerun=False):
+    commands = []
+    pruning_methods = ["synflow"]
+    seeds = list(range(1, 4))
+    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    for prune in pruning_methods:
+        for seed in seeds:
+            for sparsity in sparsities:
+                command = f"python main_eigen.py --mask pruning_models/new_pruning_models/cifar10/resnet/{prune}/ratio{sparsity}/seed{seed}/model_SA_best.pth.tar --save_dir eigen_results/{prune}_{sparsity}_seed{seed} --seed {seed}"
+                commands.append(command)
+    return commands
+
 
 
 if __name__ == "__main__":
@@ -105,7 +117,12 @@ if __name__ == "__main__":
     # run_commands(list(range(0, 8)) * 3, commands, call=True,
     #              dir="commands", shuffle=False, delay=0.5)
 
-    commands = gen_commands_backdoor(rerun=True)
+    # commands = gen_commands_backdoor(rerun=False)
+    # print(len(commands))
+    # run_commands(list(range(8)) * 4, commands, call=True,
+    #              dir="commands_attack", shuffle=False, delay=0.5)
+
+    commands = gen_commands_eigen(rerun=False)
     print(len(commands))
-    run_commands(list(range(6)) * 4, commands, call=True,
-                 dir="commands_attack", shuffle=False, delay=0.5)
+    run_commands(list(range(2)) * 1, commands, call=True,
+                 dir="commands_eigen", shuffle=False, delay=0.5)

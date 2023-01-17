@@ -68,6 +68,18 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
+def dataset_convert_to_train(dataset):
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+    while hasattr(dataset, "dataset"):
+        dataset = dataset.dataset
+    dataset.transform = train_transform
+    dataset.train = False
+
+
 def dataset_convert_to_test(dataset):
     test_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -272,11 +284,6 @@ def get_poisoned_loader(poison_loader, unpoison_loader, test_loader, poison_func
 
     full_dataset = torch.utils.data.ConcatDataset(
         [unpoison_loader.dataset, poison_dataset])
-    # full_dataset = copy.deepcopy(poison_dataset)
-    # full_dataset.data = np.concatenate(
-    #     [unpoison_loader.dataset.data, poison_dataset.data], axis=0)
-    # full_dataset.targets = np.concatenate(
-    #     [unpoison_loader.dataset.targets, poison_dataset.targets], axis=0)
 
     poisoned_loader = get_loader_from_dataset(
         poison_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=False)

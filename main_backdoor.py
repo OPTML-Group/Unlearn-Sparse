@@ -12,8 +12,6 @@ import pruner
 
 import arg_parser
 
-best_sa = 0
-
 
 def main():
     args = arg_parser.parse_args()
@@ -93,10 +91,12 @@ def main():
 
     # ================================validate after================================
 
-    evaluation_result['test_acc_unlearn'] = validate(
-        test_loader, model, criterion, args)
-    evaluation_result['attack_acc_unlearn'] = validate(
-        poisoned_test_loader, model, criterion, args)
+    if 'test_acc_unlearn' not in evaluation_result:
+        evaluation_result['test_acc_unlearn'] = validate(
+            test_loader, model, criterion, args)
+    if 'attack_acc_unlearn' not in evaluation_result:
+        evaluation_result['attack_acc_unlearn'] = validate(
+            poisoned_test_loader, model, criterion, args)
 
     unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 
