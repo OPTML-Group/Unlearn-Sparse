@@ -6,6 +6,13 @@ import copy
 import os
 
 
+def l1_regularization(model):
+    params_vec = []
+    for param in model.parameters():
+        params_vec.append(param.view(-1))
+    return torch.linalg.norm(torch.cat(params_vec), ord=1)
+
+
 def get_optimizer_and_scheduler(model, args):
     decreasing_lr = list(map(int, args.decreasing_lr.split(',')))
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -16,7 +23,7 @@ def get_optimizer_and_scheduler(model, args):
     return optimizer, scheduler
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
 
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
@@ -36,8 +43,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         # compute output
         output_clean = model(image)
-        loss = criterion(output_clean, target)
 
+        loss = criterion(output_clean, target)
+        if l1:
+            loss = loss + args.alpha * l1_regularization(model)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -65,6 +74,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
 
 def train_with_rewind(model, optimizer, scheduler, train_loader, criterion, args):
+    rewind_state_dict = None
     for epoch in range(args.epochs):
         start_time = time.time()
         print(optimizer.state_dict()['param_groups'][0]['lr'])

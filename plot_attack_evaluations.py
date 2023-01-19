@@ -135,6 +135,30 @@ def plot_attack_accuracy(evaluations, has_stand=True):
                     name = f'{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
                     plt.savefig(os.path.join(dir, name))
 
+    for metric in ['attack_acc_unlearn']:
+        for prune in pruning_methods:
+            for idx in range(3):
+                dir = f'attack_figs/seeds_{idx + 1}'
+                os.makedirs(dir, exist_ok=True)
+
+                for unlearn in methods:
+                    for trigger in trigger_sizes:
+                        plt.clf()
+                        for num in nums[1:]:
+                            line = []
+                            errors = []
+                            for sparsity in sparsities:
+                                item = evaluations[(
+                                    metric, ((num, trigger), (prune, sparsity, unlearn)))]
+                                line.append(float(item[idx]))
+                            plt.plot(sparsities, line,
+                                        linestyle='--', marker='s', label=num)
+                        plt.legend()
+                        plt.title(
+                            f'{metric}, {prune}, trigger size {trigger}, {unlearn}, seed {idx + 1}')
+                        name = f'{prune}_{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
+                        plt.savefig(os.path.join(dir, name))
+
 
 def main():
     evaluations = init_evaluations()
@@ -155,7 +179,7 @@ def main():
         with open(log_name, 'w') as fout:
             print_accuracy(evaluations, fout, has_stand)
 
-    # shutil.rmtree("figs", ignore_errors=True)
+    shutil.rmtree("attack_figs", ignore_errors=True)
     plot_attack_accuracy(evaluations, True)
     # plot_efficacy(evaluations)
 

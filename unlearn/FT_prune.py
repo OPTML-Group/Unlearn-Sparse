@@ -1,9 +1,6 @@
 import time
 import torch
 import sys
-sys.path.append("/mnt/home/jiajingh/Unlearn-Sparse/trainer")
-sys.path.append("/mnt/home/jiajingh/Unlearn-Sparse/pruner")
-sys.path.append("/mnt/home/jiajingh/Unlearn-Sparse/")
 from .impl import iterative_unlearn
 from copy import deepcopy
 from pruner import *
@@ -12,6 +9,8 @@ import matplotlib.pyplot as plt
 import os
 from utils import *
 import numpy as np
+
+
 def FT_prune(data_loaders, model, criterion, args):
     best_sa = 0
     train_loader = data_loaders["retain"]
@@ -30,7 +29,7 @@ def FT_prune(data_loaders, model, criterion, args):
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=decreasing_lr, gamma=0.1)
     print('######################################## Start Standard Training Iterative Pruning ########################################')
-
+    initalization = None
     for state in range(start_state, args.pruning_times):
 
         print('******************************************')
@@ -38,7 +37,7 @@ def FT_prune(data_loaders, model, criterion, args):
         print('******************************************')
 
         check_sparsity(model)
-        for epoch in range(start_epoch, args.epochs):
+        for epoch in range(start_epoch, args.unlearn_epochs):
             start_time = time.time()
             print(optimizer.state_dict()['param_groups'][0]['lr'])
             if state == 0:
@@ -47,7 +46,8 @@ def FT_prune(data_loaders, model, criterion, args):
                         args.save_dir, 'epoch_{}_rewind_weight.pt'.format(epoch+1)))
                     if args.prune_type == 'rewind_lt':
                         initalization = deepcopy(model.state_dict())
-            acc = train(train_loader, model, criterion, optimizer, epoch, args)
+            acc = train(train_loader, model, criterion,
+                        optimizer, epoch, args, l1=True)
 
             # evaluate on validation set
             tacc = validate(val_loader, model, criterion, args)
@@ -107,20 +107,20 @@ def FT_prune(data_loaders, model, criterion, args):
                 args.save_dir, '0model_SA_best.pth.tar'), map_location=torch.device('cuda:'+str(args.gpu)))['state_dict']
 
         #pruning and rewind
-        if args.random_prune:
-            print('random pruning')
-            pruning_model_random(model, args.rate)
-        else:
-            print('L1 pruning')
-            pruning_model(model, args.rate)
-
-        remain_weight = check_sparsity(model)
-        current_mask = extract_mask(model.state_dict())
-        remove_prune(model)
 
         # weight rewinding
         # rewind, initialization is a full model architecture without masks
         if state < args.pruning_times - 1:
+            if args.random_prune:
+                print('random pruning')
+                pruning_model_random(model, args.rate)
+            else:
+                print('L1 pruning')
+                pruning_model(model, args.rate)
+
+            remain_weight = check_sparsity(model)
+            current_mask = extract_mask(model.state_dict())
+            remove_prune(model)
             model.load_state_dict(initalization, strict=False)
             prune_model_custom(model, current_mask)
             optimizer = torch.optim.SGD(model.parameters(), args.lr,

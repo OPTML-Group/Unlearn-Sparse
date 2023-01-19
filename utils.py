@@ -100,10 +100,17 @@ def setup_model_dataset(args):
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         marked_loader, _, _ = cifar10_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
                                                   num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)
+
+        if args.train_seed is None:
+            args.train_seed = args.seed
+        setup_seed(args.train_seed)
+
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:
             model = model_dict[args.arch](num_classes=classes)
+
+        setup_seed(args.train_seed)
 
         model.normalize = normalization
         print(model)
@@ -116,6 +123,10 @@ def setup_model_dataset(args):
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         marked_loader, _, _ = cifar100_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
                                                    num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)
+
+        if args.train_seed:
+            setup_seed(args.train_seed)
+
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:
@@ -252,7 +263,6 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
 
 
 def get_loader_from_dataset(dataset, batch_size, seed=1, shuffle=True):
-    setup_seed(seed)
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=0, pin_memory=True, shuffle=shuffle)
 
 
