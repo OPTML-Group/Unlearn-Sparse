@@ -7,12 +7,14 @@ params = {
     "retrain": "--unlearn_epochs 160",
     "fisher_new": "--alpha 3e-8 --no-aug",
     "fisher": "--alpha 1e-6 --no-aug",
-    "wfisher": "--alpha 1 --no-aug"
+    "wfisher": "--alpha 1 --no-aug",
+    "FT_prune": "--alpha 0.0001 --unlearn_epochs 10 --unlearn_lr 0.01",
+    "FT_prune_bi": "--unlearn_epochs 10 --unlearn_lr 0.01",
 }
 mask_format = {
     "SynFlow": "pruning_models/synflow_iterative/ratio{sparsity}/seed1/state_dict.pth",
     "OMP": "pruning_models/OMP/Omp_resnet18_cifar10_seed1_rate_{sparsity}/1checkpoint.pth.tar",
-    "IMP": "pruning_models/IMP/ratio{sparsity}/model_SA_best.pth.tar"
+    "IMP": "pruning_models/IMP/ratio{sparsity}/model_SA_best.pth.tar",
 }
 
 
@@ -75,7 +77,7 @@ def gen_commands_backdoor(rerun=False):
     sparsities = "0 0.5 0.75 0.9 0.95 0.99".split(' ')
     methods = "FT".split(' ')  # fisher_new FT RL raw retrain wfisher
     nums = [4500]  # , 450, 2250]
-    trigger_sizes = [6, 4, 2]  # 4, 2
+    trigger_sizes = [4]#[6, 4, 2]  # 4, 2
     seeds = [2]
     train_seeds = [1, 3]
 
@@ -108,32 +110,37 @@ def gen_commands_backdoor(rerun=False):
 
     methods = ['FT_prune', 'FT_prune_bi']
     train_seeds = [1, 2, 3]
-    for prune in pruning_methods:
-        for sparsity in sparsities:
-            for trigger in trigger_sizes:
-                for num in nums:
-                    for unlearn in methods:
-                        for seed in seeds:
-                            for t_seed in train_seeds:
-                                command = f"python -u main_backdoor_alter.py --save_dir new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --prune {prune} --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed}"
-                                if unlearn in params:
-                                    command = command + ' ' + params[unlearn]
-                                if not rerun:
-                                    command = command + ' --resume'
-                                commands.append(command)
+    for sparsity in sparsities:
+        for trigger in trigger_sizes:
+            for num in nums:
+                for unlearn in methods:
+                    for seed in seeds:
+                        for t_seed in train_seeds:
+                            save_dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{sparsity}_seed{seed}_tseed{t_seed}"
+                            mask_dir = f"new_backdoor_results/checkpoint/scrub{num}_trigger{trigger}_0_seed{seed}_tseed{t_seed}.pth"
+                            command = f"python -u main_backdoor_alter.py --mask {mask_dir} --save_dir {save_dir} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed}"
+                            if unlearn in params:
+                                command = command + ' ' + params[unlearn]
+                            if not rerun:
+                                command = command + ' --resume'
+                            commands.append(command)
     return commands
 
 
 def gen_commands_eigen(rerun=False):
     commands = []
     pruning_methods = ["synflow"]
-    seeds = list(range(1, 4))
-    sparsities = "0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
-    for prune in pruning_methods:
-        for seed in seeds:
-            for sparsity in sparsities:
-                command = f"python main_eigen.py --mask pruning_models/new_pruning_models/cifar10/resnet/{prune}/ratio{sparsity}/seed{seed}/model_SA_best.pth.tar --save_dir eigen_results/{prune}_{sparsity}_seed{seed} --seed {seed}"
-                commands.append(command)
+    # seeds = list(range(1, 4))
+    sparsities = "0.0 0.5 0.75 0.9 0.95 0.99 0.995".split(' ')
+    # for prune in pruning_methods:
+    #     for seed in seeds:
+    #         for sparsity in sparsities:
+    #             command = f"python main_eigen.py --mask pruning_models/new_pruning_models/cifar10/resnet/{prune}/ratio{sparsity}/seed{seed}/model_SA_best.pth.tar --save_dir eigen_results/{prune}_{sparsity}_seed{seed} --seed {seed}"
+    #             commands.append(command)
+    for sparsity in sparsities:
+        for epoch in range(0, 180, 20):
+            command = f"python main_eigen.py --mask pruning_models/omp_new/Omp_resnet18_cifar10_seed1_rate_{sparsity}_tj/epoch_{epoch}_weight.pt --save_dir eigen_results/single/{sparsity}_epoch{epoch}"
+            commands.append(command)
     return commands
 
 
@@ -148,12 +155,12 @@ if __name__ == "__main__":
     # run_commands(list(range(0, 8)) * 3, commands, call=True,
     #              dir="commands", shuffle=False, delay=0.5)
 
-    commands = gen_commands_backdoor(rerun=True)
-    print(len(commands))
-    run_commands([2, 3, 4, 5, 6, 7, 0] * 2, commands, call=True,
-                 dir="commands_attack", shuffle=False, delay=0.5)
-
-    # commands = gen_commands_eigen(rerun=False)
+    # commands = gen_commands_backdoor(rerun=True)
     # print(len(commands))
-    # run_commands(list(range(2)) * 1, commands, call=True,
-    #              dir="commands_eigen", shuffle=False, delay=0.5)
+    # run_commands([2, 3, 4, 5, 6, 7, 0, 1] * 4, commands, call=True,
+    #              dir="commands_attack", shuffle=False, delay=0.5)
+
+    commands = gen_commands_eigen(rerun=False)
+    print(len(commands))
+    run_commands(list(range(8)) * 1, commands, call=True,
+                 dir="commands_eigen", shuffle=False, delay=0.5)

@@ -65,10 +65,23 @@ def main():
     else:
         # ================================training================================
 
-        optimizer, scheduler = trainer.get_optimizer_and_scheduler(model, args)
+        utils.setup_seed(args.train_seed)
 
-        trainer.train_with_rewind(
-            model, optimizer, scheduler, poisoned_train_loader, criterion, args)
+        if args.mask and os.path.exists(args.mask):
+            checkpoint = torch.load(args.mask, map_location=device)
+            if 'state_dict' in checkpoint.keys():
+                checkpoint = checkpoint['state_dict']
+            model.load_state_dict(checkpoint, strict=False)
+            current_mask = pruner.extract_mask(checkpoint)
+            pruner.prune_model_custom(model, current_mask)
+            pruner.check_sparsity(model)
+        else:
+            optimizer, scheduler = trainer.get_optimizer_and_scheduler(model, args)
+
+            trainer.train_with_rewind(
+                model, optimizer, scheduler, poisoned_train_loader, criterion, args)
+            os.makedirs(os.path.dirname(args.mask), exist_ok=True)
+            torch.save(model.state_dict(), args.mask)
 
         # ================================validate before================================
 
@@ -79,6 +92,8 @@ def main():
             poisoned_test_loader, model, criterion, args)
 
         # ================================unlearn================================
+
+        utils.setup_seed(args.train_seed)
 
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
 

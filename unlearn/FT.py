@@ -3,12 +3,13 @@ import torch
 import utils
 from .impl import iterative_unlearn
 
+
 def l1_regularization(model):
     params_vec = []
     for param in model.parameters():
         params_vec.append(param.view(-1))
-    return torch.linalg.norm(torch.cat(params_vec),ord=1)
-    
+    return torch.linalg.norm(torch.cat(params_vec), ord=1)
+
 
 @iterative_unlearn
 def FT(data_loaders, model, criterion, optimizer, epoch, args):
@@ -82,7 +83,8 @@ def FT_l1(data_loaders, model, criterion, optimizer, epoch, args):
 
         # compute output
         output_clean = model(image)
-        loss = criterion(output_clean, target) + args.alpha * l1_regularization(model)
+        loss = criterion(output_clean, target) + \
+            args.alpha * l1_regularization(model)
 
         optimizer.zero_grad()
         loss.backward()

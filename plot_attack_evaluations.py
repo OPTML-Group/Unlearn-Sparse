@@ -7,12 +7,16 @@ import seaborn as sns
 import shutil
 
 
-pruning_methods = ["synflow", "omp"]
+pruning_methods = ['omp']  # ["synflow", "omp"]
 sparsities = "0 0.5 0.75 0.9 0.95 0.99".split(' ')
 methods = "FT".split(' ')  # fisher_new FT RL raw retrain wfisher
-nums = [450, 2250, 4500]
+nums = [4500]  # [450, 2250, 4500]
 trigger_sizes = [2, 4, 6]
-seeds = list(range(1, 4))
+seeds = [2]  # list(range(1, 4))
+t_seeds = [1, 3]
+
+methods = ['FT_prune', 'FT_prune_bi']
+t_seeds = [1, 2, 3]
 
 metrics = ['test_acc_unlearn', 'attack_acc_unlearn']
 
@@ -53,17 +57,41 @@ def load_checkpoint(dir, unlearn):
 
 
 def load_checkpoints(results):
+    # for num in nums:
+    #     for trigger in trigger_sizes:
+    #         for prune in pruning_methods:
+    #             for sparsity in sparsities:
+    #                 for seed in seeds:
+    #                     for unlearn in methods:
+    #                         dir = f"backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn}"
+    #                         ret = load_checkpoint(dir, unlearn)
+    #                         if ret is not None:
+    #                             update_evaluations_with_item(
+    #                                 results, ret, ((num, trigger), (prune, sparsity, unlearn)))
+    # for num in nums:
+    #     for trigger in trigger_sizes:
+    #         for prune in pruning_methods:
+    #             for sparsity in sparsities:
+    #                 for seed in seeds:
+    #                     for unlearn in methods:
+    #                         for t_seed in t_seeds:
+    #                             dir = f"new_backdoor_results/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
+    #                             ret = load_checkpoint(dir, unlearn)
+    #                             if ret is not None:
+    #                                 update_evaluations_with_item(
+    #                                     results, ret, ((num, trigger), (prune, sparsity, unlearn)))
     for num in nums:
         for trigger in trigger_sizes:
             for prune in pruning_methods:
                 for sparsity in sparsities:
                     for seed in seeds:
                         for unlearn in methods:
-                            dir = f"backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn}"
-                            ret = load_checkpoint(dir, unlearn)
-                            if ret is not None:
-                                update_evaluations_with_item(
-                                    results, ret, ((num, trigger), (prune, sparsity, unlearn)))
+                            for t_seed in t_seeds:
+                                dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
+                                ret = load_checkpoint(dir, unlearn)
+                                if ret is not None:
+                                    update_evaluations_with_item(
+                                        results, ret, ((num, trigger), (prune, sparsity, unlearn)))
     print("Loading finished!")
 
 
@@ -135,29 +163,29 @@ def plot_attack_accuracy(evaluations, has_stand=True):
                     name = f'{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
                     plt.savefig(os.path.join(dir, name))
 
-    for metric in ['attack_acc_unlearn']:
-        for prune in pruning_methods:
-            for idx in range(3):
-                dir = f'attack_figs/seeds_{idx + 1}'
-                os.makedirs(dir, exist_ok=True)
+    # for metric in ['attack_acc_unlearn']:
+    #     for prune in pruning_methods:
+    #         for idx in range(3):
+    #             dir = f'attack_figs/seeds_{idx + 1}'
+    #             os.makedirs(dir, exist_ok=True)
 
-                for unlearn in methods:
-                    for trigger in trigger_sizes:
-                        plt.clf()
-                        for num in nums[1:]:
-                            line = []
-                            errors = []
-                            for sparsity in sparsities:
-                                item = evaluations[(
-                                    metric, ((num, trigger), (prune, sparsity, unlearn)))]
-                                line.append(float(item[idx]))
-                            plt.plot(sparsities, line,
-                                        linestyle='--', marker='s', label=num)
-                        plt.legend()
-                        plt.title(
-                            f'{metric}, {prune}, trigger size {trigger}, {unlearn}, seed {idx + 1}')
-                        name = f'{prune}_{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
-                        plt.savefig(os.path.join(dir, name))
+    #             for unlearn in methods:
+    #                 for trigger in trigger_sizes:
+    #                     plt.clf()
+    #                     for num in nums[1:]:
+    #                         line = []
+    #                         errors = []
+    #                         for sparsity in sparsities:
+    #                             item = evaluations[(
+    #                                 metric, ((num, trigger), (prune, sparsity, unlearn)))]
+    #                             line.append(float(item[idx]))
+    #                         plt.plot(sparsities, line,
+    #                                  linestyle='--', marker='s', label=num)
+    #                     plt.legend()
+    #                     plt.title(
+    #                         f'{metric}, {prune}, trigger size {trigger}, {unlearn}, seed {idx + 1}')
+    #                     name = f'{prune}_{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
+    #                     plt.savefig(os.path.join(dir, name))
 
 
 def main():

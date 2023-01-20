@@ -43,7 +43,7 @@ def main():
     path = os.path.join(args.save_dir, 'eigen_90.pkl')
 
     with open(path, 'wb') as fpkl:
-        pkl.dump(eigens.cpu().numpy(), fpkl)
+        pkl.dump((eigens.cpu().numpy(), weights.cpu().numpy()), fpkl)
 
 
 if __name__ == '__main__':
