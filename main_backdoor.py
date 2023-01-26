@@ -65,10 +65,21 @@ def main():
     else:
         # ================================pruning================================
 
-        prune_method = pruner.get_prune_method(args.prune)
+        if args.mask and os.path.exists(args.mask):
+            checkpoint = torch.load(args.mask, map_location=device)
+            if 'state_dict' in checkpoint.keys():
+                checkpoint = checkpoint['state_dict']
+            model.load_state_dict(checkpoint, strict=False)
+            current_mask = pruner.extract_mask(checkpoint)
+            pruner.prune_model_custom(model, current_mask)
+            pruner.check_sparsity(model)
+        else:
+            prune_method = pruner.get_prune_method(args.prune)
 
-        prune_method(model, poisoned_train_loader,
-                     test_loader, criterion, args)
+            prune_method(model, poisoned_train_loader,
+                        test_loader, criterion, args)
+            os.makedirs(os.path.dirname(args.mask), exist_ok=True)
+            torch.save(model.state_dict(), args.mask)
 
         # ================================validate before================================
 

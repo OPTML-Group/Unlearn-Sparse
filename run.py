@@ -8,8 +8,8 @@ params = {
     "fisher_new": "--alpha 3e-8 --no-aug",
     "fisher": "--alpha 1e-6 --no-aug",
     "wfisher": "--alpha 1 --no-aug",
-    "FT_prune": "--alpha 0.0001 --unlearn_epochs 10 --unlearn_lr 0.01",
-    "FT_prune_bi": "--unlearn_epochs 10 --unlearn_lr 0.01",
+    "FT_prune": "--alpha 0.0001 --unlearn_epochs 10 ",#--unlearn_lr 0.01",
+    "FT_prune_bi": "--unlearn_epochs 10 ",#--unlearn_lr 0.01",
 }
 mask_format = {
     "SynFlow": "pruning_models/synflow_iterative/ratio{sparsity}/seed1/state_dict.pth",
@@ -94,36 +94,41 @@ def gen_commands_backdoor(rerun=False):
     #                             command = command + ' --resume'
     #                         commands.append(command)
 
-    # for prune in pruning_methods:
-    #     for sparsity in sparsities:
-    #         for trigger in trigger_sizes:
-    #             for num in nums:
-    #                 for unlearn in methods:
+    methods = ['FT_prune_bi']#, 'FT_prune']
+    # train_seeds = range(6, 11)
+    # for t_seed in train_seeds:
+    #     for unlearn in methods:
+    #         for sparsity in sparsities:
+    #             for trigger in trigger_sizes:
+    #                 for num in nums:
     #                     for seed in seeds:
-    #                         for t_seed in train_seeds:
-    #                             command = f"python -u main_backdoor.py --save_dir new_backdoor_results/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --prune {prune} --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed}"
+    #                         for lr in [0.01]: #[0.02, 0.005]:
+    #                             save_dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{sparsity}_seed{seed}_tseed{t_seed}/lr{lr}"
+    #                             mask_dir = f"new_backdoor_results/checkpoint/scrub{num}_trigger{trigger}_0_seed{seed}_tseed{t_seed}.pth"
+    #                             command = f"python -u main_backdoor_alter.py --mask {mask_dir} --save_dir {save_dir} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed} --unlearn_lr {lr}"
     #                             if unlearn in params:
     #                                 command = command + ' ' + params[unlearn]
     #                             if not rerun:
     #                                 command = command + ' --resume'
     #                             commands.append(command)
 
-    methods = ['FT_prune', 'FT_prune_bi']
-    train_seeds = [1, 2, 3]
-    for sparsity in sparsities:
+    methods = ["FT"]
+    train_seeds = [6, 11]
+    for prune in pruning_methods:
         for trigger in trigger_sizes:
             for num in nums:
                 for unlearn in methods:
                     for seed in seeds:
-                        for t_seed in train_seeds:
-                            save_dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{sparsity}_seed{seed}_tseed{t_seed}"
-                            mask_dir = f"new_backdoor_results/checkpoint/scrub{num}_trigger{trigger}_0_seed{seed}_tseed{t_seed}.pth"
-                            command = f"python -u main_backdoor_alter.py --mask {mask_dir} --save_dir {save_dir} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed}"
-                            if unlearn in params:
-                                command = command + ' ' + params[unlearn]
-                            if not rerun:
-                                command = command + ' --resume'
-                            commands.append(command)
+                        for sparsity in sparsities:
+                            for t_seed in train_seeds:
+                                save_dir = f"new_backdoor_results/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
+                                mask_dir = f"new_backdoor_results/checkpoint/scrub{num}_trigger{trigger}_{sparsity}_seed{seed}_tseed{t_seed}.pth"
+                                command = f"python -u main_backdoor.py --save_dir {save_dir} --mask {mask_dir} --unlearn {unlearn} --num_indexes_to_replace {num} --seed {seed} --class_to_replace 0 --prune {prune} --rate {sparsity} --trigger_size {trigger} --train_seed {t_seed}"
+                                if unlearn in params:
+                                    command = command + ' ' + params[unlearn]
+                                if not rerun:
+                                    command = command + ' --resume'
+                                commands.append(command)
     return commands
 
 
@@ -138,7 +143,7 @@ def gen_commands_eigen(rerun=False):
     #             command = f"python main_eigen.py --mask pruning_models/new_pruning_models/cifar10/resnet/{prune}/ratio{sparsity}/seed{seed}/model_SA_best.pth.tar --save_dir eigen_results/{prune}_{sparsity}_seed{seed} --seed {seed}"
     #             commands.append(command)
     for sparsity in sparsities:
-        for epoch in range(0, 180, 20):
+        for epoch in range(0, 181, 20):
             command = f"python main_eigen.py --mask pruning_models/omp_new/Omp_resnet18_cifar10_seed1_rate_{sparsity}_tj/epoch_{epoch}_weight.pt --save_dir eigen_results/single/{sparsity}_epoch{epoch}"
             commands.append(command)
     return commands
@@ -155,12 +160,12 @@ if __name__ == "__main__":
     # run_commands(list(range(0, 8)) * 3, commands, call=True,
     #              dir="commands", shuffle=False, delay=0.5)
 
-    # commands = gen_commands_backdoor(rerun=True)
-    # print(len(commands))
-    # run_commands([2, 3, 4, 5, 6, 7, 0, 1] * 4, commands, call=True,
-    #              dir="commands_attack", shuffle=False, delay=0.5)
-
-    commands = gen_commands_eigen(rerun=False)
+    commands = gen_commands_backdoor(rerun=True)
     print(len(commands))
-    run_commands(list(range(8)) * 1, commands, call=True,
-                 dir="commands_eigen", shuffle=False, delay=0.5)
+    run_commands(list(range(8)) * 3 + [0, 1, 2], commands, call=True,
+                 dir="commands_attack", shuffle=False, delay=0.5)
+
+    # commands = gen_commands_eigen(rerun=False)
+    # print(len(commands))
+    # run_commands(list(range(8)) * 1, commands, call=True,
+    #              dir="commands_eigen", shuffle=False, delay=0.5)

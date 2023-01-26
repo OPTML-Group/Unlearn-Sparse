@@ -1,42 +1,25 @@
-import time
+from .FT import FT_iter
 import pruner
-from trainer import train, validate, get_optimizer_and_scheduler
+from .impl import iterative_unlearn
 
+prune_step = 2
 
-def FT_prune_bi(data_loaders, model, criterion, args):
-    train_loader = data_loaders["retain"]
-    test_loader = data_loaders["test"]
+@iterative_unlearn
+def FT_prune_bi(data_loaders, model, criterion, optimizer, epoch, args):
+    # switch to train mode
+    model.train()
 
-    optimizer, scheduler = get_optimizer_and_scheduler(model, args)
+    # prune
+    prune_rate = 1 - (1 - args.rate) ** (1 / ((args.unlearn_epochs - 1) // prune_step + 1))
 
-    prune_rate = args.rate ** (1 / (args.unlearn_epochs - 1))
-
-    pruner.check_sparsity(model)
-
-    for epoch in range(args.unlearn_epochs):
-        start_time = time.time()
-
-        # training
-        train(train_loader, model, criterion, optimizer, epoch, args)
-        scheduler.step()
-
-        print("training duration:{}".format(time.time()-start_time))
-
-        # eval
-        pruner.check_sparsity(model)
-        validate(test_loader, model, criterion, args)
-
-        # pruning
-        if epoch < args.unlearn_epochs - 1:
-            if args.random_prune:
-                print('random pruning')
-                pruner.pruning_model_random(model, prune_rate)
-            else:
-                print('L1 pruning')
-                pruner.pruning_model(model, prune_rate)
-
-        print("one epoch duration:{}".format(time.time()-start_time))
+    if (args.unlearn_epochs - epoch) % prune_step == 0:
+        if args.random_prune:
+            print('random pruning')
+            pruner.pruning_model_random(model, prune_rate)
+        else:
+            print('L1 pruning')
+            pruner.pruning_model(model, prune_rate)
 
     pruner.check_sparsity(model)
 
-    return model
+    return FT_iter(data_loaders, model, criterion, optimizer, epoch, args)

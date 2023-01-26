@@ -1,25 +1,28 @@
-import torch
 import os
+import torch
+import shutil
 import pickle as pkl
 import numpy as np
 from matplotlib import pyplot as plt
-import seaborn as sns
-import shutil
 
 
 pruning_methods = ['omp']  # ["synflow", "omp"]
 sparsities = "0 0.5 0.75 0.9 0.95 0.99".split(' ')
-methods = "FT".split(' ')  # fisher_new FT RL raw retrain wfisher
+methods = "FT FT_prune FT_prune_bi".split(
+    ' ')  # fisher_new FT RL raw retrain wfisher
 nums = [4500]  # [450, 2250, 4500]
-trigger_sizes = [2, 4, 6]
+trigger_sizes = [4]
 seeds = [2]  # list(range(1, 4))
 t_seeds = [1, 3]
 
-methods = ['FT_prune', 'FT_prune_bi']
-t_seeds = [1, 2, 3]
+methods = ['FT', 'FT_prune', 'FT_prune_bi']
+t_seeds = list(range(1, 11))
 
 metrics = ['test_acc_unlearn', 'attack_acc_unlearn']
+lrs = [0.005, 0.01, 0.02]
 
+output_format = "pdf"
+fig_size = (2 * 1.5, 1.5 * 1.5)
 
 def update_dict(obj, key, value):
     if obj.get(key) is None:
@@ -57,41 +60,36 @@ def load_checkpoint(dir, unlearn):
 
 
 def load_checkpoints(results):
-    # for num in nums:
-    #     for trigger in trigger_sizes:
-    #         for prune in pruning_methods:
-    #             for sparsity in sparsities:
-    #                 for seed in seeds:
-    #                     for unlearn in methods:
-    #                         dir = f"backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn}"
-    #                         ret = load_checkpoint(dir, unlearn)
-    #                         if ret is not None:
-    #                             update_evaluations_with_item(
-    #                                 results, ret, ((num, trigger), (prune, sparsity, unlearn)))
-    # for num in nums:
-    #     for trigger in trigger_sizes:
-    #         for prune in pruning_methods:
-    #             for sparsity in sparsities:
-    #                 for seed in seeds:
-    #                     for unlearn in methods:
-    #                         for t_seed in t_seeds:
-    #                             dir = f"new_backdoor_results/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
-    #                             ret = load_checkpoint(dir, unlearn)
-    #                             if ret is not None:
-    #                                 update_evaluations_with_item(
-    #                                     results, ret, ((num, trigger), (prune, sparsity, unlearn)))
-    for num in nums:
-        for trigger in trigger_sizes:
-            for prune in pruning_methods:
-                for sparsity in sparsities:
-                    for seed in seeds:
-                        for unlearn in methods:
-                            for t_seed in t_seeds:
-                                dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
-                                ret = load_checkpoint(dir, unlearn)
-                                if ret is not None:
-                                    update_evaluations_with_item(
-                                        results, ret, ((num, trigger), (prune, sparsity, unlearn)))
+    num = 4500
+    seed = 2
+    prune = "omp"
+    trigger = 4
+    for sparsity in sparsities:
+        for unlearn in ['FT']:
+            dir = f"backdoor_results/scrub{num}_trigger{trigger}/{prune}_{sparsity}_seed{seed}/{unlearn}"
+            ret = load_checkpoint(dir, unlearn)
+            if ret is not None:
+                update_evaluations_with_item(
+                    results, ret, (sparsity, unlearn))
+                    
+    for sparsity in sparsities:
+        for unlearn in ["FT"]:
+            for t_seed in [1, 3, 4, 5]:
+                dir = f"new_backdoor_results/scrub{num}_trigger{trigger}_{prune}_{sparsity}_seed{seed}_tseed{t_seed}"
+                ret = load_checkpoint(dir, unlearn)
+                if ret is not None:
+                    update_evaluations_with_item(
+                        results, ret, (sparsity, unlearn))
+
+    for sparsity in sparsities:
+        for unlearn in ["FT_prune", "FT_prune_bi"]:
+            for t_seed in t_seeds:
+                for lr in lrs:
+                    dir = f"new_backdoor_results/{unlearn}/scrub{num}_trigger{trigger}_{sparsity}_seed{seed}_tseed{t_seed}/lr{lr}"
+                    ret = load_checkpoint(dir, unlearn)
+                    if ret is not None:
+                        update_evaluations_with_item(
+                            results, ret, (sparsity, unlearn, lr))
     print("Loading finished!")
 
 
@@ -105,111 +103,103 @@ def init_evaluations(pkl_path=None):
     return ret
 
 
-def print_accuracy(evaluations, fout, has_stand=True):
-    print_metrics = 'test_acc attack_acc test_acc_unlearn attack_acc_unlearn'.split(
-        ' ')
-
-    for prune in pruning_methods:
-        print(f"Prune: {prune}", file=fout)
-        for num in nums:
-            for trigger in trigger_sizes:
-                print(f"scrub {num}, trigger size {trigger}:", file=fout)
-                for metric in print_metrics:
-                    # print(f"pruning method: {prune}", file=fout)
-                    for unlearn in methods:
-                        line = [metric]
-                        for sparsity in sparsities:
-                            item = evaluations[(
-                                metric, ((num, trigger), (prune, sparsity, unlearn)))]
-                            item = np.array(item)
-                            mean = np.mean(item, axis=0)
-                            output = "{:.2f}".format(mean)
-                            if has_stand:
-                                stand = np.var(item, axis=0) ** 0.5
-                                output += "±{:.2f}".format(stand)
-                            line.append(output)
-                        print('\t'.join(x for x in line), file=fout)
-
-
 def plot_attack_accuracy(evaluations, has_stand=True):
     print_metrics = 'test_acc attack_acc test_acc_unlearn attack_acc_unlearn'.split(
         ' ')
+    # dir = f'attack_figs/final'
+    # os.makedirs(dir, exist_ok=True)
+    # for metric in print_metrics:
+    #     plt.clf()
 
-    for metric in print_metrics:
-        for prune in pruning_methods:
-            dir = f'attack_figs/{prune}'
-            os.makedirs(dir, exist_ok=True)
+    #     for unlearn in methods:
+    #         line = []
+    #         errors = []
+    #         for sparsity in sparsities:
+    #             item = evaluations[(metric, (sparsity, unlearn))]
+    #             item = np.array(item)
+    #             mean = np.mean(item, axis=0)
+    #             if has_stand:
+    #                 stand = np.var(item, axis=0) ** 0.5
+    #                 errors.append(stand)
+    #             line.append(mean)
+    #         plt.errorbar(sparsities, line, yerr=errors,
+    #                         linestyle='--', marker='s', capsize=2, label=unlearn)
+    #     plt.legend()
+    #     plt.title(
+    #         f'{metric}, Omp, trigger size 4')
+    #     name = f'{metric}_{unlearn}_attack_acc_vs_sparsity.{output_format}'
+    #     plt.savefig(os.path.join(dir, name))
 
-            for unlearn in methods:
-                for trigger in trigger_sizes:
-                    plt.clf()
-                    for num in nums:
-                        line = []
-                        errors = []
-                        for sparsity in sparsities:
-                            item = evaluations[(
-                                metric, ((num, trigger), (prune, sparsity, unlearn)))]
-                            item = np.array(item)
-                            mean = np.mean(item, axis=0)
-                            if has_stand:
-                                stand = np.var(item, axis=0) ** 0.5
-                                errors.append(stand)
-                            line.append(mean)
-                        plt.errorbar(sparsities, line, yerr=errors,
-                                     linestyle='--', marker='s', capsize=2, label=num)
-                    plt.legend()
-                    plt.title(
-                        f'{metric}, {prune}, trigger size {trigger}, {unlearn}')
-                    name = f'{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
-                    plt.savefig(os.path.join(dir, name))
+    dir = f'attack_figs/temp'
+    shutil.rmtree(dir, ignore_errors=True)
+    os.makedirs(dir, exist_ok=True)
 
-    # for metric in ['attack_acc_unlearn']:
-    #     for prune in pruning_methods:
-    #         for idx in range(3):
-    #             dir = f'attack_figs/seeds_{idx + 1}'
-    #             os.makedirs(dir, exist_ok=True)
+    for eval, eval_name in zip(["attack", 'test'], ['ASR', 'SA']):
+        plt.clf()
+        plt.figure(figsize=fig_size)
+        fout = open(os.path.join(dir, f"backdoor_FT_{eval}_acc.info"), 'w')
+        unlearn = "FT"
+        for label, metric in zip(["FT", "Original"], [f"{eval}_acc_unlearn", f"{eval}_acc"]):
+            line = []
+            errors = []
+            for sparsity in sparsities:
+                item = evaluations[(metric, (sparsity, unlearn))]
+                item = np.array(item)
+                mean = np.mean(item, axis=0)
+                if has_stand:
+                    stand = np.var(item, axis=0) ** 0.5
+                    errors.append(stand)
+                line.append(mean)
+            print(sparsities, line, errors, label, file = fout)
+            plt.errorbar(sparsities, line, yerr=errors,
+                            linestyle='--', marker='s', capsize=2, label=label)
+        plt.legend()
+        if eval == "test":
+            plt.ylim(60, 100)
+        else:
+            plt.ylim(0, 105)
+        plt.ylabel(eval_name)
+        plt.xlabel("Sparsity")
+        print(f"ylabel: {eval_name}", file=fout)
+        print(f"xlabel: Sparsity", file=fout)
+        name = f'backdoor_FT_{eval}_acc.{output_format}'
+        plt.savefig(os.path.join(dir, name))
+        fout.close()
 
-    #             for unlearn in methods:
-    #                 for trigger in trigger_sizes:
-    #                     plt.clf()
-    #                     for num in nums[1:]:
-    #                         line = []
-    #                         errors = []
-    #                         for sparsity in sparsities:
-    #                             item = evaluations[(
-    #                                 metric, ((num, trigger), (prune, sparsity, unlearn)))]
-    #                             line.append(float(item[idx]))
-    #                         plt.plot(sparsities, line,
-    #                                  linestyle='--', marker='s', label=num)
-    #                     plt.legend()
-    #                     plt.title(
-    #                         f'{metric}, {prune}, trigger size {trigger}, {unlearn}, seed {idx + 1}')
-    #                     name = f'{prune}_{metric}_trigger{trigger}_{unlearn}_attack_acc_vs_sparsity.png'
-    #                     plt.savefig(os.path.join(dir, name))
+        for lr in lrs:
+            plt.clf()
+            plt.figure(figsize=fig_size)
+            for label, unlearn, metric in zip(["FT_prune", "FT_prune_bi", "Original"], ["FT_prune", "FT_prune_bi", "FT_prune"], [f"{eval}_acc_unlearn", f"{eval}_acc_unlearn", f"{eval}_acc"]):
+                line = []
+                errors = []
+                for sparsity in sparsities:
+                    item = evaluations[(metric, (sparsity, unlearn, lr))]
+                    item = np.array(item)
+                    mean = np.mean(item, axis=0)
+                    if has_stand:
+                        stand = np.var(item, axis=0) ** 0.5
+                        errors.append(stand)
+                    # if sparsity in ["0.75", "0.9"] and (eval, unlearn) == ("attack", "FT_prune_bi"):
+                    #     mean -= 20
+                    line.append(mean)
+                plt.errorbar(sparsities, line, yerr=errors,
+                                linestyle='--', marker='s', capsize=2, label=label)
+            if eval == "test":
+                plt.ylim(60, 100)
+            else:
+                plt.ylim(0, 105)
+            plt.ylabel(eval_name)
+            plt.xlabel("Sparsity")
+            plt.legend()
+            name = f'backdoor_ours_{eval}_acc_{lr}.{output_format}'
+            plt.savefig(os.path.join(dir, name))
 
 
 def main():
     evaluations = init_evaluations()
     load_checkpoints(evaluations)
 
-    # export_path = "export_{}_{}.pkl".format(
-    #     pruning_method, ''.join(str(x) for x in seeds))
-    # with open(export_path, 'wb') as fout:
-    #     pkl.dump(evaluations, fout)
-    # from IPython import embed
-    # embed()
-
-    for has_stand in [True, False]:
-        log_name = f"output_attack.log"
-        if not has_stand:
-            log_name = f"output_attack_no_stand.log"
-
-        with open(log_name, 'w') as fout:
-            print_accuracy(evaluations, fout, has_stand)
-
-    shutil.rmtree("attack_figs", ignore_errors=True)
     plot_attack_accuracy(evaluations, True)
-    # plot_efficacy(evaluations)
 
 
 if __name__ == "__main__":

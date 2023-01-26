@@ -11,3 +11,5 @@ commands
 *.png
 *.jpg
 *.sh
+*.pdf
+*.info

@@ -236,6 +236,8 @@ def accuracy(output, target, topk=(1,)):
 
 
 def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay=0.5):
+    if len(commands) == 0:
+        return 
     if os.path.exists(dir):
         shutil.rmtree(dir)
     if shuffle:
@@ -250,6 +252,8 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
     n_gpu = len(gpus)
     for i, gpu in enumerate(gpus):
         i_commands = commands[i::n_gpu]
+        if len(i_commands) == 0:
+            continue 
         prefix = "CUDA_VISIBLE_DEVICES={} ".format(gpu)
 
         sh_path = os.path.join(dir, "run{}.sh".format(i))

@@ -12,7 +12,7 @@ import pickle as pkl
 
 best_sa = 0
 
-
+iterations = 90
 def main():
     args = arg_parser.parse_args()
 
@@ -34,13 +34,14 @@ def main():
     checkpoint = torch.load(args.mask, map_location=device)
     if 'state_dict' in checkpoint.keys():
         checkpoint = checkpoint['state_dict']
+    model.load_state_dict(checkpoint, strict=False)
     current_mask = pruner.extract_mask(checkpoint)
     pruner.prune_model_custom(model, current_mask)
     pruner.check_sparsity(model)
 
-    eigens, weights = evaluation.lanczos(model, train_loader_full, 90)
+    eigens, weights = evaluation.lanczos(model, train_loader_full, iterations)
     print(eigens.shape)
-    path = os.path.join(args.save_dir, 'eigen_90.pkl')
+    path = os.path.join(args.save_dir, f'eigen_{iterations}.pkl')
 
     with open(path, 'wb') as fpkl:
         pkl.dump((eigens.cpu().numpy(), weights.cpu().numpy()), fpkl)
