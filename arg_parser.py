@@ -72,7 +72,7 @@ def parse_args():
     ##################################### Unlearn setting #################################################
     parser.add_argument('--unlearn', type=str,
                         default='retrain', help='method to unlearn')
-    parser.add_argument('--unlearn_lr', default=0.1, type=float,
+    parser.add_argument('--unlearn_lr', default=0.01, type=float,
                         help='initial learning rate')
     parser.add_argument('--unlearn_epochs', default=10, type=int,
                         help='number of total epochs for unlearn to run')

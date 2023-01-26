@@ -18,7 +18,7 @@
 
 ### Retrain
 
-```python -u main_forget.py --save_dir ${save_dir} --mask ${mask_path} --unlearn retrain --num_indexes_to_replace 4500--unlearn_epochs 160 --unlearn_lr 0.1```
+```python -u main_forget.py --save_dir ${save_dir} --mask ${mask_path} --unlearn retrain --num_indexes_to_replace 4500 --unlearn_epochs 160 --unlearn_lr 0.1```
 
 ### FT
 
