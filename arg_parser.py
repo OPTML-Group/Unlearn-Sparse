@@ -60,7 +60,7 @@ def parse_args():
                         help="method to prune")
     parser.add_argument('--pruning_times', default=1,
                         type=int, help='overall times of pruning (only works for IMP)')
-    parser.add_argument('--rate', default=0.2, type=float,
+    parser.add_argument('--rate', default=0.95, type=float,
                         help='pruning rate')  # pruning rate is always 20%
     parser.add_argument('--prune_type', default='rewind_lt', type=str,
                         help='IMP type (lt, pt or rewind_lt)')
