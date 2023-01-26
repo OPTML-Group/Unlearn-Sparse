@@ -42,8 +42,6 @@ def main():
         poisoned_target = np.zeros_like(target) + poison_label
         poisoned_data[:, -2 - args.trigger_size:-
                       2, -2 - args.trigger_size:-2, :] *= 0
-        # batch_data[:, -2, -2, :] *= 0
-        # batch_data[:, -2, -2, :] *= 0
         return poisoned_data, poisoned_target
 
     poisoned_loader, unpoisoned_loader, poisoned_train_loader, poisoned_test_loader = utils.get_poisoned_loader(

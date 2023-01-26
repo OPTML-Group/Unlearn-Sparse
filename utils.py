@@ -183,22 +183,6 @@ def setup_model_dataset(args):
         train_set_loader, val_loader, test_loader = cifar10_dataloaders_no_val(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
 
-    elif args.dataset == "fast_cifar":
-        classes = 10
-        normalization = NormalizeByChannelMeanStd(
-            mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
-        train_full_loader, val_loader, test_loader = fast_cifar10_dataloaders(
-            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
-        # marked_loader, _,_ = cifar10_dataloaders(batch_size = args.batch_size, data_dir = args.data, num_workers = args.workers,class_to_replace=args.class_to_replace,num_indexes_to_replace=args.num_indexes_to_replace,indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark= True,shuffle = True)
-        if args.imagenet_arch:
-            model = model_dict[args.arch](num_classes=classes, imagenet=True)
-        else:
-            model = model_dict[args.arch](num_classes=classes)
-
-        model.normalize = normalization
-        print(model)
-        return model, train_full_loader, val_loader, test_loader
-
     else:
         raise ValueError('Dataset not supprot yet !')
     # import pdb;pdb.set_trace()

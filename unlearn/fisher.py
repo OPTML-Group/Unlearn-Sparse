@@ -97,7 +97,6 @@ def get_mean_var(p, args, is_base_dist=False):
     elif p.ndim == 1:
         # BatchNorm
         var *= 10
-#         var*=1
     return mu, var
 
 

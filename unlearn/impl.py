@@ -56,9 +56,6 @@ def _iterative_unlearn_impl(unlearn_iter_func):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
 
-        # results = OrderedDict((name, []) for name in data_loaders.keys())
-        # results['train'] = []
-
         for epoch in range(0, args.unlearn_epochs):
             start_time = time.time()
             print("Epoch #{}, Learning rate: {}".format(
@@ -66,14 +63,6 @@ def _iterative_unlearn_impl(unlearn_iter_func):
             train_acc = unlearn_iter_func(
                 data_loaders, model, criterion, optimizer, epoch, args)
             scheduler.step()
-
-            # results['train'].append(train_acc)
-            # for name, loader in data_loaders.items():
-            #     print(f"{name} acc:")
-            #     val_acc = validate(loader, model, criterion, args)
-            #     results[name].append(val_acc)
-
-            # plot_training_curve(results, args.save_dir, args.unlearn)
 
             print("one epoch duration:{}".format(time.time()-start_time))
 

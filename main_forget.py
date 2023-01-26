@@ -14,8 +14,6 @@ import evaluation
 
 import arg_parser
 
-best_sa = 0
-
 
 def main():
     args = arg_parser.parse_args()
