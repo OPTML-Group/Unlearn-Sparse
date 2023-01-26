@@ -68,10 +68,14 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def dataset_convert_to_test(dataset):
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
+def dataset_convert_to_test(dataset,args=None):
+    if args.dataset == "TinyImagenet":
+        test_transform=transforms.Compose([
     ])
+    else:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
     while hasattr(dataset, "dataset"):
         dataset = dataset.dataset
     dataset.transform = test_transform
@@ -84,10 +88,26 @@ def setup_model_dataset(args):
         classes = 10
         normalization = NormalizeByChannelMeanStd(
             mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
-        train_full_loader, val_loader, test_loader = cifar10_dataloaders(
+        train_full_loader, val_loader,_  = cifar10_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
-        marked_loader, _, _ = cifar10_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
+        marked_loader, _, test_loader = cifar10_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
                                                   num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)
+        if args.imagenet_arch:
+            model = model_dict[args.arch](num_classes=classes, imagenet=True)
+        else:
+            model = model_dict[args.arch](num_classes=classes)
+
+        model.normalize = normalization
+        print(model)
+        return model, train_full_loader, val_loader, test_loader, marked_loader
+    elif args.dataset == 'svhn':
+        classes = 10
+        normalization = NormalizeByChannelMeanStd(
+            mean=[0.4377, 0.4438, 0.4728], std=[0.1201, 0.1231, 0.1052])
+        train_full_loader, val_loader,_  = svhn_dataloaders(
+            batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
+        marked_loader, _, test_loader = svhn_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
+                                                  num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True)
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
         else:
@@ -100,9 +120,9 @@ def setup_model_dataset(args):
         classes = 100
         normalization = NormalizeByChannelMeanStd(
             mean=[0.5071, 0.4866, 0.4409], std=[0.2673,	0.2564,	0.2762])
-        train_full_loader, val_loader, test_loader = cifar100_dataloaders(
+        train_full_loader, val_loader, _ = cifar100_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
-        marked_loader, _, _ = cifar100_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
+        marked_loader, _, test_loader = cifar100_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,
                                                   num_indexes_to_replace=args.num_indexes_to_replace, indexes_to_replace=args.indexes_to_replace, seed=args.seed, only_mark=True, shuffle=True, no_aug=args.no_aug)        
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
