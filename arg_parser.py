@@ -23,7 +23,7 @@ def parse_args():
                         help="architecture for imagenet size samples")
 
     ##################################### General setting ############################################
-    parser.add_argument('--seed', default=1, type=int, help='random seed')
+    parser.add_argument('--seed', default=2, type=int, help='random seed')
     parser.add_argument('--train_seed', default=None, type=int,
                         help='seed for training (default value same as args.seed)')
     parser.add_argument('--gpu', type=int, default=0, help='gpu device id')

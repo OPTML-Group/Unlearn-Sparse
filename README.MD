@@ -1,9 +1,49 @@
 # Unlearn vs Sparse
 
-## To run the unlearn methods
+## Pruning
 
-```python -u main_forget.py --save_dir ${save_dir} --mask ${path_of_model} --unlearn ${unlearn methods} --epochs ${epochs} --lr ${lr} | tee xxx.log```
+### OMP
 
-## To run the test on the unlearn methods
-(need to be reformulated further)
-```python -u main_test.py --save_dir ${save_dir} --mask ${path_of_model}```
+```python```
+
+### IMP
+
+```python```
+
+### SynFlow
+
+```python```
+
+## Unlearning
+
+### Retrain
+
+```python```
+
+### FT
+
+```python```
+
+### GA
+
+```python```
+
+### FF
+
+```python```
+
+### IU
+
+```python```
+
+### l1-sparse
+
+```python```
+
+### AO-sparse
+
+```python```
+
+## Backdoor
+
+```python```
