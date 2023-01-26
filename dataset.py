@@ -359,37 +359,59 @@ class TinyImageNet:
 
             os.rmdir(os.path.join(self.val_path, "images"))
 
-    def data_loaders(self, **kwargs):
+    def data_loaders(self,batch_size=128, data_dir='datasets/tiny', num_workers=2, class_to_replace: int = None, num_indexes_to_replace=None, indexes_to_replace=None, seed: int = 1, only_mark: bool = False, shuffle=True, no_aug=False):
 
-        trainset = ImageFolder(self.train_path, transform=self.tr_train)
-        trainset = TinyImageNetDataset(trainset, self.norm_layer)
-        testset = ImageFolder(self.test_path, transform=self.tr_test)
-        testset = TinyImageNetDataset(testset, self.norm_layer)
+        train_set = ImageFolder(self.train_path, transform=self.tr_train)
+        train_set = TinyImageNetDataset(train_set, self.norm_layer)
+        test_set = ImageFolder(self.test_path, transform=self.tr_test)
+        test_set = TinyImageNetDataset(test_set, self.norm_layer)
+        train_set.targets = np.array(train_set.targets)
+        train_set.targets = np.array(train_set.targets)
+        rng = np.random.RandomState(seed)
+        valid_set = copy.deepcopy(train_set)
+        valid_idx = []
+        for i in range(max(train_set.targets) + 1):
+            class_idx = np.where(train_set.targets == i)[0]
+            valid_idx.append(rng.choice(class_idx, int(
+                0.0*len(class_idx)), replace=False))
+        valid_idx = np.hstack(valid_idx)
+        train_set_copy = copy.deepcopy(train_set)
 
-        np.random.seed(10)
+        valid_set.imgs = train_set_copy.imgs[valid_idx]
+        valid_set.targets = train_set_copy.targets[valid_idx]
 
-        train_loader = DataLoader(
-            trainset,
-            batch_size=self.args.batch_size,
-            num_workers=self.args.num_workers,
-            shuffle=True,
-            **kwargs
-        )
+        train_idx = list(set(range(len(train_set)))-set(valid_idx))
 
-        np.random.seed(50)
+        train_set.imgs = train_set_copy.imgs[train_idx]
+        train_set.targets = train_set_copy.targets[train_idx]
 
-        val_loader = DataLoader(
-            testset,
-            batch_size=self.args.batch_size,
-            num_workers=self.args.num_workers,
-            shuffle=True,
-            **kwargs
-        )
+        if class_to_replace is not None and indexes_to_replace is not None:
+            raise ValueError(
+                "Only one of `class_to_replace` and `indexes_to_replace` can be specified")
+        if class_to_replace is not None:
+            replace_class(train_set, class_to_replace, num_indexes_to_replace=num_indexes_to_replace, seed=seed-1,
+                        only_mark=only_mark)
+            if num_indexes_to_replace is None:
+                test_set.targets = np.array(test_set.targets)
+                test_set.imgs = test_set.imgs[test_set.targets != class_to_replace]
+                test_set.targets = test_set.targets[test_set.targets !=
+                                                    class_to_replace]
+                print(test_set.targets)
+                test_set.targets = test_set.targets.tolist()
+        if indexes_to_replace is not None:
+            replace_indexes(dataset=train_set, indexes=indexes_to_replace,
+                            seed=seed-1, only_mark=only_mark)
 
-        test_loader = DataLoader(
-            testset, batch_size=self.args.batch_size, num_workers=self.args.num_workers, shuffle=False, **kwargs
-        )
+        loader_args = {'num_workers': 0, 'pin_memory': False}
 
+        def _init_fn(worker_id):
+            np.random.seed(int(seed))
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
+                                worker_init_fn=_init_fn if seed is not None else None, **loader_args)
+        val_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
+                                worker_init_fn=_init_fn if seed is not None else None, **loader_args)
+        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
+                                worker_init_fn=_init_fn if seed is not None else None, **loader_args)
         print(
             f"Traing loader: {len(train_loader.dataset)} images, Test loader: {len(test_loader.dataset)} images"
         )
