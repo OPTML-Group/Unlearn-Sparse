@@ -46,4 +46,4 @@
 
 ## Backdoor
 
-```python -u main_backdoor.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT --num_indexes_to_replace 4500 --seed 2 --class_to_replace 0 --prune omp --rate 0 --trigger_size 4 --train_seed 6 --unlearn_epochs 10 --unlearn_lr 0.01```
+```python -u main_backdoor.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT --num_indexes_to_replace 4500```
