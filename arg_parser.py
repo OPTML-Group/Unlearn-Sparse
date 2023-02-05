@@ -3,7 +3,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='PyTorch Lottery Tickets Experiments')
+        description='Experiments about machine unlearning vs sparsity')
 
     ##################################### Dataset #################################################
     parser.add_argument('--data', type=str, default='../data',
