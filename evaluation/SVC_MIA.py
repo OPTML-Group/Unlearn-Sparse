@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from sklearn.svm import SVC
 import torch.nn.functional as F
-
+from imagenet import get_x_y_from_data_dict
 
 def entropy(p, dim=-1, keepdim=False):
     return -torch.where(p > 0, p * p.log(), p.new([0.0])).sum(dim=dim, keepdim=keepdim)
@@ -31,10 +31,13 @@ def collect_prob(data_loader, model):
     model.eval()
     with torch.no_grad():
         for batch in data_loader:
-            batch = [tensor.to(next(model.parameters()).device)
-                     for tensor in batch]
-            data, target = batch
-
+            try:
+                batch = [tensor.to(next(model.parameters()).device)
+                        for tensor in batch]
+                data, target = batch
+            except:
+                device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+                data, target = get_x_y_from_data_dict(batch, device)
             with torch.no_grad():
                 output = model(data)
                 prob.append(F.softmax(output, dim=-1).data)

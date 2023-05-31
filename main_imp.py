@@ -44,7 +44,12 @@ def main():
         setup_seed(args.seed)
 
     # prepare dataset
-    model, train_loader, val_loader, test_loader = setup_model_dataset(args)
+    if args.dataset == 'imagenet':
+        args.class_to_replace = None
+        model, train_loader, val_loader = setup_model_dataset(args)
+    else:
+        model, train_loader, val_loader, test_loader, marked_loader = setup_model_dataset(
+            args)
     model.cuda()
 
     criterion = nn.CrossEntropyLoss()
@@ -65,18 +70,24 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
 
+    if args.imagenet_arch:    
+        lambda0 = lambda cur_iter: (cur_iter+1) / args.warmup if cur_iter < args.warmup else \
+            (0.5*(1.0+np.cos(np.pi*((cur_iter-args.warmup)/(args.epochs-args.warmup)))))
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,lr_lambda=lambda0)
+    else:
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
     if args.resume:
         print('resume from checkpoint {}'.format(args.checkpoint))
         checkpoint = torch.load(
             args.checkpoint, map_location=torch.device('cuda:'+str(args.gpu)))
         best_sa = checkpoint['best_sa']
+        print(best_sa)
         start_epoch = checkpoint['epoch']
         all_result = checkpoint['result']
         start_state = checkpoint['state']
-
+        print(start_state)
         if start_state > 0:
             current_mask = extract_mask(checkpoint['state_dict'])
             prune_model_custom(model, current_mask)
@@ -132,14 +143,14 @@ def main():
 
             # evaluate on validation set
             tacc = validate(val_loader, model, criterion, args)
-            # evaluate on test set
-            test_tacc = validate(test_loader, model, criterion, args)
+            # # evaluate on test set
+            # test_tacc = validate(test_loader, model, criterion, args)
 
             scheduler.step()
 
             all_result['train_ta'].append(acc)
             all_result['val_ta'].append(tacc)
-            all_result['test_ta'].append(test_tacc)
+            # all_result['test_ta'].append(test_tacc)
 
             # remember best prec@1 and save checkpoint
             is_best_sa = tacc > best_sa
@@ -169,11 +180,11 @@ def main():
         # report result
         check_sparsity(model)
         print("Performance on the test data set")
-        test_tacc = validate(test_loader, model, criterion, args)
+        test_tacc = validate(val_loader, model, criterion, args)
         if len(all_result['val_ta']) != 0:
             val_pick_best_epoch = np.argmax(np.array(all_result['val_ta']))
             print('* best SA = {}, Epoch = {}'.format(
-                all_result['test_ta'][val_pick_best_epoch], val_pick_best_epoch+1))
+                all_result['val_ta'][val_pick_best_epoch], val_pick_best_epoch+1))
 
         all_result = {}
         all_result['train_ta'] = []
@@ -206,8 +217,13 @@ def main():
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=decreasing_lr, gamma=0.1)
+        if args.imagenet_arch:    
+            lambda0 = lambda cur_iter: (cur_iter+1) / args.warmup if cur_iter < args.warmup else \
+                (0.5*(1.0+np.cos(np.pi*((cur_iter-args.warmup)/(args.epochs-args.warmup)))))
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,lr_lambda=lambda0)
+        else:
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
         if args.rewind_epoch:
             # learning rate rewinding
             for _ in range(args.rewind_epoch):

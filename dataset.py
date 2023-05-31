@@ -100,10 +100,11 @@ def svhn_dataloaders(batch_size=128, data_dir='datasets/svhn', num_workers=2, cl
     if class_to_replace is not None:
         replace_class(train_set, class_to_replace, num_indexes_to_replace=num_indexes_to_replace, seed=seed-1,
                       only_mark=only_mark)
-        if num_indexes_to_replace is None or num_indexes_to_replace == 4454:
+        if num_indexes_to_replace is None or num_indexes_to_replace ==4454:
             test_set.data = test_set.data[test_set.labels != class_to_replace]
             test_set.labels = test_set.labels[test_set.labels !=
                                               class_to_replace]
+            
     if indexes_to_replace is not None:
         replace_indexes(dataset=train_set, indexes=indexes_to_replace,
                         seed=seed-1, only_mark=only_mark)
@@ -477,7 +478,13 @@ def replace_indexes(dataset: torch.utils.data.Dataset, indexes, seed=0,
 def replace_class(dataset: torch.utils.data.Dataset, class_to_replace: int, num_indexes_to_replace: int = None,
                   seed: int = 0, only_mark: bool = False):
     if class_to_replace == -1:
-        indexes = np.flatnonzero(np.ones_like(dataset.targets))
+        try:
+            indexes = np.flatnonzero(np.ones_like(dataset.targets))
+        except:
+            try:
+                indexes = np.flatnonzero(np.ones_like(dataset.labels))
+            except:
+                indexes = np.flatnonzero(np.ones_like(dataset._labels))
     else:
         try:
             indexes = np.flatnonzero(

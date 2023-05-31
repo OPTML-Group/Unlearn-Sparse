@@ -3,7 +3,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Experiments about machine unlearning vs sparsity')
+        description='PyTorch Lottery Tickets Experiments')
 
     ##################################### Dataset #################################################
     parser.add_argument('--data', type=str, default='../data',
@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument('--input_size', type=int,
                         default=32, help='size of input images')
     parser.add_argument('--data_dir', type=str,
-                        default='../data/tiny-imagenet-200', help='dir to tiny-imagenet')
+                        default='./tiny-imagenet-200', help='dir to tiny-imagenet')
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--num_classes', type=int, default=10)
     ##################################### Architecture ############################################
@@ -21,10 +21,13 @@ def parse_args():
                         default='resnet18', help='model architecture')
     parser.add_argument('--imagenet_arch', action="store_true",
                         help="architecture for imagenet size samples")
-
+    parser.add_argument('--train_y_file', type=str,
+                        default='./labels/train_ys.pth', help='labels for training files')
+    parser.add_argument('--val_y_file', type=str,
+                        default='./labels/val_ys.pth', help='labels for validation files')
     ##################################### General setting ############################################
     parser.add_argument('--seed', default=2, type=int, help='random seed')
-    parser.add_argument('--train_seed', default=None, type=int,
+    parser.add_argument('--train_seed', default=1, type=int,
                         help='seed for training (default value same as args.seed)')
     parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
     parser.add_argument('--workers', type=int, default=4,
@@ -54,7 +57,7 @@ def parse_args():
                         help='decreasing strategy')
     parser.add_argument('--no-aug', action='store_true', default=False,
                         help='No augmentation in training dataset (transformation).')
-
+    parser.add_argument('--no-l1-epochs', default=0, type=int, help='non l1 epochs')
     ##################################### Pruning setting #################################################
     parser.add_argument('--prune', type=str, default="omp",
                         help="method to prune")
@@ -66,8 +69,10 @@ def parse_args():
                         help='IMP type (lt, pt or rewind_lt)')
     parser.add_argument('--random_prune', action='store_true',
                         help='whether using random prune')
-    parser.add_argument('--rewind_epoch', default=8,
+    parser.add_argument('--rewind_epoch', default=0,
                         type=int, help='rewind checkpoint')
+    parser.add_argument('--rewind_pth', default=None,
+                        type=str, help='rewind checkpoint to load')
 
     ##################################### Unlearn setting #################################################
     parser.add_argument('--unlearn', type=str,

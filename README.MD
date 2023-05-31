@@ -40,10 +40,6 @@
 
 ```python -u main_forget.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT_prune --num_indexes_to_replace 4500 --alpha ${alpha} --unlearn_lr 0.01 --unlearn_epochs 10```
 
-### AO-sparse
-
-```python -u main_forget.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT_prune_bi --num_indexes_to_replace 4500 --unlearn_lr 0.01 --unlearn_epochs 10```
-
 ## Trojan model cleanse
 
 ```python -u main_backdoor.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT --num_indexes_to_replace 4500```

@@ -15,7 +15,8 @@ from models import *
 from dataset import *
 import random
 from torchvision import transforms
-
+from imagenet import prepare_data
+import sys
 __all__ = ['setup_model_dataset', 'AverageMeter',
            'warmup_lr', 'save_checkpoint', 'setup_seed', 'accuracy']
 
@@ -168,6 +169,31 @@ def setup_model_dataset(args):
         print(model)
         return model, train_full_loader, val_loader, test_loader,marked_loader
     
+    elif args.dataset == 'imagenet':
+        classes = 1000
+        normalization = NormalizeByChannelMeanStd(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        train_ys = torch.load(args.train_y_file)
+        val_ys = torch.load(args.val_y_file)
+        model = model_dict[args.arch](num_classes=classes, imagenet=True)
+
+        model.normalize = normalization
+        print(model)
+        if args.class_to_replace is None:
+            loaders = prepare_data(dataset='imagenet', batch_size=args.batch_size)
+            train_loader,val_loader = loaders['train'],loaders['val']
+            return model, train_loader, val_loader 
+        else:
+            train_subset_indices = torch.ones_like(train_ys)
+            val_subset_indices = torch.ones_like(val_ys)
+            train_subset_indices[train_ys==args.class_to_replace] = 0
+            val_subset_indices[val_ys==args.class_to_replace] = 0
+            loaders = prepare_data(dataset='imagenet',batch_size=args.batch_size,train_subset_indices=train_subset_indices,val_subset_indices=val_subset_indices)
+            retain_loader = loaders['train']
+            forget_loader = loaders['fog']
+            val_loader = loaders['val']
+            return model, retain_loader, forget_loader, val_loader 
+
 
     elif args.dataset == 'cifar100_no_val':
         classes = 100
@@ -319,3 +345,5 @@ def get_poisoned_loader(poison_loader, unpoison_loader, test_loader, poison_func
         poison_test_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=False)
 
     return poisoned_loader, unpoison_loader, poisoned_full_loader, poisoned_test_loader
+
+

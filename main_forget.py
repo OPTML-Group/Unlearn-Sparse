@@ -134,7 +134,7 @@ def main():
     if evaluation_result is None:
         evaluation_result = {}
 
-    if 'accuracy' not in evaluation_result:
+    if 'new_accuracy' not in evaluation_result:
         accuracy = {}
         for name, loader in unlearn_data_loaders.items():
             utils.dataset_convert_to_test(loader.dataset,args)
