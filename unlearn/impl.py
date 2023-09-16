@@ -6,7 +6,9 @@ import numpy as np
 import pruner
 import utils
 from pruner import extract_mask,remove_prune,prune_model_custom
-
+import sys
+sys.path.append(".")
+from trainer import validate
 def plot_training_curve(training_result, save_dir, prefix):
     # plot training curve
     for name, result in training_result.items():
@@ -64,10 +66,13 @@ def _iterative_unlearn_impl(unlearn_iter_func):
         if args.imagenet_arch and args.unlearn == "retrain":    
             lambda0 = lambda cur_iter: (cur_iter+1) / args.warmup if cur_iter < args.warmup else \
                 (0.5*(1.0+np.cos(np.pi*((cur_iter-args.warmup)/(args.unlearn_epochs-args.warmup)))))
-            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,lr_lambda=lambda0)
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,lr_lambda=lambda0) 
         else:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(
                 optimizer, milestones=decreasing_lr, gamma=0.1)  # 0.1 is fixed
+        if args.arch == 'swin_t':
+            optimizer = torch.optim.Adam(model.parameters(), args.unlearn_lr)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.unlearn_epochs)
         if args.rewind_epoch!=0:
             # learning rate rewinding
             for _ in range(args.rewind_epoch):

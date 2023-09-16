@@ -134,7 +134,7 @@ def Wfisher(data_loaders, model, criterion, args):
             forget_grad += f_grad
             total += real_num
         total_2 = 0
-        for i, data in enumerate(tqdm(forget_loader)):
+        for i, data in enumerate(tqdm(retain_grad_loader)):
             model.zero_grad()
             data, label = get_x_y_from_data_dict(data, device)
             real_num = data.shape[0]

@@ -6,6 +6,8 @@ from .impl import load_unlearn_checkpoint, save_unlearn_checkpoint
 from .Wfisher import Wfisher
 from .FT_prune import FT_prune
 from .FT_prune_bi import FT_prune_bi
+from .retrain_ls import retrain_ls
+from .retrain_sam import retrain_sam
 def raw(data_loaders, model, criterion, args):
     pass
 
@@ -36,5 +38,9 @@ def get_unlearn_method(name):
         return FT_prune_bi
     elif name == "GA_l1":
         return GA_l1
+    elif name == "retrain_ls":
+        return retrain_ls
+    elif name == "retrain_sam":
+        return retrain_sam
     else:
         raise NotImplementedError(f"Unlearn method {name} not implemented!")

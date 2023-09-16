@@ -111,6 +111,8 @@ def setup_model_dataset(args):
 
         if args.imagenet_arch:
             model = model_dict[args.arch](num_classes=classes, imagenet=True)
+        elif args.arch == 'swin_t':
+            model = swin_t(window_size=4,num_classes=10,downscaling_factors=(2,2,2,1))
         else:
             model = model_dict[args.arch](num_classes=classes)
 
@@ -122,7 +124,7 @@ def setup_model_dataset(args):
     elif args.dataset == 'svhn':
         classes = 10
         normalization = NormalizeByChannelMeanStd(
-            mean=[0.4377, 0.4438, 0.4728], std=[0.1201, 0.1231, 0.1052])
+            mean=[0.4377, 0.4438, 0.4728], std=[0.1980, 0.2010, 0.1970])
         train_full_loader, val_loader,_  = svhn_dataloaders(
             batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers)
         marked_loader, _, test_loader = svhn_dataloaders(batch_size=args.batch_size, data_dir=args.data, num_workers=args.workers, class_to_replace=args.class_to_replace,

@@ -123,7 +123,7 @@ def main():
         pruner.prune_model_custom(model, current_mask)
         pruner.check_sparsity(model)
 
-        if args.unlearn != "retrain":
+        if args.unlearn != "retrain" and args.unlearn != "retrain_sam" and args.unlearn != "retrain_ls":
             model.load_state_dict(checkpoint, strict=False)
 
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
