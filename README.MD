@@ -2,7 +2,7 @@
 
 # Model Sparsity Can Simplify Machine Unlearning
 
-[![preprint](https://img.shields.io/static/v1?label=arXiv&message=2301.11308&color=B31B1B)](https://arxiv.org/abs/2304.04934)
+[![preprint](https://img.shields.io/static/v1?label=arXiv&message=2304.04934&color=B31B1B)](https://arxiv.org/abs/2304.04934)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Venue:NeurIPS 2023](https://img.shields.io/badge/Venue-NeurIPS%202023-007CFF)](https://nips.cc/)
 
