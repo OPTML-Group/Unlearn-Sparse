@@ -19,6 +19,7 @@
 
 This is the official code repository for the NeurIPS 2023 Spotlight paper [Model Sparsity Can Simplify Machine Unlearning](https://arxiv.org/abs/2304.04934).
 
+# Commands
 
 ## Pruning
 
@@ -64,7 +65,7 @@ This is the official code repository for the NeurIPS 2023 Spotlight paper [Model
 
 ```python -u main_backdoor.py --save_dir ${save_dir} --mask ${mask_path} --unlearn FT --num_indexes_to_replace 4500```
 
-## BibTeX
+# BibTeX
 If you find this repository or the ideas presented in our paper useful, please consider citing.
 ```
 @article{jia2023model,
