@@ -18,7 +18,27 @@
 </table>
 
 This is the official code repository for the NeurIPS 2023 Spotlight paper [Model Sparsity Can Simplify Machine Unlearning](https://arxiv.org/abs/2304.04934).
+# Abstract
+In response to recent data regulation requirements, machine unlearning (MU) has emerged as a critical process to remove the influence of specific examples from a given model. Although exact unlearning can be achieved through complete model retraining using the remaining dataset, the associated computational costs have driven the development of efficient, approximate unlearning techniques. Moving beyond data-centric MU approaches, our study introduces a novel model-based perspective: model sparsification via weight pruning, which is capable of reducing the gap between exact unlearning and approximate unlearning. We show in both theory and practice that model sparsity can boost the multi-criteria unlearning performance of an approximate unlearner, closing the approximation gap, while continuing to be efficient. This leads to a new MU paradigm, termed prune first, then unlearn, which infuses a sparse model prior into the unlearning process. Building on this insight, we also develop a sparsity-aware unlearning method that utilizes sparsity regularization to enhance the training process of approximate unlearning. Extensive experiments show that our proposals consistently benefit MU in various unlearning scenarios. A notable highlight is the 77% unlearning efficacy gain of fine-tuning (one of the simplest unlearning methods) when using sparsity-aware unlearning. Furthermore, we demonstrate the practical impact of our proposed MU methods in addressing other machine learning challenges, such as defending against backdoor attacks and enhancing transfer learning.
+# Requirements
+```
+conda env create -f environment.yml
+```
 
+# Code Structure
+The source code is organized as follows:
+
+```evaluation```: contains MIA evaluation code.
+
+```models```: contains the model definitions.
+
+```utils.py```: contains the utility functions. 
+
+```main_imp.py```: contains the code for training and pruning. 
+
+```main_forget.py```: contains the main executable code for unlearning. 
+
+```main_backdoor.py```: contains the main executable code for backdoor cleanse.
 # Commands
 
 ## Pruning
