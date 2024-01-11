@@ -253,10 +253,10 @@ def cifar100_dataloaders(
             seed=seed - 1,
             only_mark=only_mark,
         )
-        if num_indexes_to_replace is None:
+        if num_indexes_to_replace is None or num_indexes_to_replace == 450:
             test_set.data = test_set.data[test_set.targets != class_to_replace]
             test_set.targets = test_set.targets[test_set.targets != class_to_replace]
-    if indexes_to_replace is not None or indexes_to_replace == 450:
+    if indexes_to_replace is not None:
         replace_indexes(
             dataset=train_set,
             indexes=indexes_to_replace,
