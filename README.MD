@@ -96,7 +96,7 @@ If you find this repository or the ideas presented in our paper useful, please c
 }
 ```
 
-## Related Works about Machine Unlearning
+## Related Works - Machine Unlearning
 
 * [Saliency Unlearning (SalUn)](https://github.com/OPTML-Group/Unlearn-Saliency)
 * [Attacking Unlearned Diffusion (UnlearnDiff)](https://github.com/OPTML-Group/Diffusion-MU-Attack)
