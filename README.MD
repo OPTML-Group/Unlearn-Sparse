@@ -88,10 +88,10 @@ The source code is organized as follows:
 ## BibTeX
 If you find this repository or the ideas presented in our paper useful, please consider citing.
 ```
-@article{jia2023model,
-  title={Model sparsification can simplify machine unlearning},
+@inproceedings{jia2023model,
+  title={Model Sparsity Can Simplify Machine Unlearning},
   author={Jia, Jinghan and Liu, Jiancheng and Ram, Parikshit and Yao, Yuguang and Liu, Gaowen and Liu, Yang and Sharma, Pranay and Liu, Sijia},
-  journal={arXiv preprint arXiv:2304.04934},
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
   year={2023}
 }
 ```
