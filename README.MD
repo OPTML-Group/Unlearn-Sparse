@@ -4,7 +4,11 @@
 
 [![preprint](https://img.shields.io/static/v1?label=arXiv&message=2304.04934&color=B31B1B)](https://arxiv.org/abs/2304.04934)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Venue:NeurIPS 2023](https://img.shields.io/badge/Venue-NeurIPS%202023-007CFF)](https://nips.cc/Conferences/2023)
+[![Venue:NeurIPS 2023](https://img.shields.io/badge/Venue-NeurIPS%202023%20(Spotlight)-007CFF)](https://nips.cc/Conferences/2023)
+
+[![GitHub top language](https://img.shields.io/github/languages/top/OPTML-Group/Unlearn-Sparse)](https://github.com/OPTML-Group/Unlearn-Sparse)
+[![GitHub repo size](https://img.shields.io/github/repo-size/OPTML-Group/Unlearn-Sparse)](https://github.com/OPTML-Group/Unlearn-Sparse)
+[![GitHub stars](https://img.shields.io/github/stars/OPTML-Group/Unlearn-Sparse)](https://github.com/OPTML-Group/Unlearn-Sparse)
 
 </div>
 <table align="center">
