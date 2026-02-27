@@ -378,23 +378,76 @@ def run_commands(gpus, commands, call=False, dir="commands", shuffle=True, delay
 
 
 def get_loader_from_dataset(dataset, batch_size, seed=1, shuffle=True):
+    if seed is not None:
+        setup_seed(seed)
     return torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, num_workers=0, pin_memory=True, shuffle=shuffle
     )
 
 
+def _dataset_label_attr(dataset):
+    for attr in ("targets", "labels", "_labels"):
+        if hasattr(dataset, attr):
+            return attr
+    raise AttributeError("Dataset does not expose targets/labels/_labels")
+
+
+def _dataset_data_attr(dataset):
+    for attr in ("data", "imgs"):
+        if hasattr(dataset, attr):
+            return attr
+    raise AttributeError("Dataset does not expose data/imgs")
+
+
+def _to_numpy_like(values):
+    if isinstance(values, torch.Tensor):
+        return values.cpu().numpy()
+    return np.array(values)
+
+
+def _slice_with_mask(values, mask):
+    if isinstance(values, torch.Tensor):
+        mask_tensor = torch.from_numpy(mask).to(dtype=torch.bool, device=values.device)
+        return values[mask_tensor]
+    if isinstance(values, list):
+        return [v for v, keep in zip(values, mask) if keep]
+    return values[mask]
+
+
+def _cast_labels_like(reference, labels):
+    if isinstance(reference, torch.Tensor):
+        return torch.from_numpy(labels).to(reference.device, dtype=reference.dtype)
+    if isinstance(reference, list):
+        return labels.tolist()
+    return labels
+
+
 def get_unlearn_loader(marked_loader, args):
     forget_dataset = copy.deepcopy(marked_loader.dataset)
-    marked = forget_dataset.targets < 0
-    forget_dataset.data = forget_dataset.data[marked]
-    forget_dataset.targets = -forget_dataset.targets[marked] - 1
+    label_attr = _dataset_label_attr(forget_dataset)
+    data_attr = _dataset_data_attr(forget_dataset)
+    raw_labels = getattr(forget_dataset, label_attr)
+    labels = _to_numpy_like(raw_labels)
+    forget_marked = labels < 0
+    raw_data = getattr(forget_dataset, data_attr)
+    setattr(forget_dataset, data_attr, _slice_with_mask(raw_data, forget_marked))
+    forget_labels = -labels[forget_marked] - 1
+    setattr(forget_dataset, label_attr, _cast_labels_like(raw_labels, forget_labels))
     forget_loader = get_loader_from_dataset(
         forget_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=True
     )
+
     retain_dataset = copy.deepcopy(marked_loader.dataset)
-    marked = retain_dataset.targets >= 0
-    retain_dataset.data = retain_dataset.data[marked]
-    retain_dataset.targets = retain_dataset.targets[marked]
+    label_attr = _dataset_label_attr(retain_dataset)
+    data_attr = _dataset_data_attr(retain_dataset)
+    raw_labels = getattr(retain_dataset, label_attr)
+    labels = _to_numpy_like(raw_labels)
+    retain_marked = labels >= 0
+    raw_data = getattr(retain_dataset, data_attr)
+    setattr(retain_dataset, data_attr, _slice_with_mask(raw_data, retain_marked))
+    retain_labels = labels[retain_marked]
+    setattr(retain_dataset, label_attr, _cast_labels_like(raw_labels, retain_labels))
+
     retain_loader = get_loader_from_dataset(
         retain_dataset, batch_size=args.batch_size, seed=args.seed, shuffle=True
     )
