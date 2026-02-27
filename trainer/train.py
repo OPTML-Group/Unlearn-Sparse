@@ -29,6 +29,16 @@ def get_optimizer_and_scheduler(model, args):
     return optimizer, scheduler
 
 
+def _get_batch(data, args):
+    if args.imagenet_arch:
+        device = (
+            torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        )
+        return get_x_y_from_data_dict(data, device)
+    image, target = data
+    return image.cuda(), target.cuda()
+
+
 def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
@@ -37,88 +47,45 @@ def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
     model.train()
 
     start = time.time()
-    if args.imagenet_arch:
-        device = (
-            torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        )
-        for i, data in enumerate(train_loader):
-            image, target = get_x_y_from_data_dict(data, device)
-            if epoch < args.warmup:
-                utils.warmup_lr(
-                    epoch, i + 1, optimizer, one_epoch_step=len(train_loader), args=args
+    for i, data in enumerate(train_loader):
+        if epoch < args.warmup:
+            utils.warmup_lr(
+                epoch, i + 1, optimizer, one_epoch_step=len(train_loader), args=args
+            )
+
+        image, target = _get_batch(data, args)
+
+        # compute output
+        output_clean = model(image)
+
+        loss = criterion(output_clean, target)
+        if l1:
+            loss = loss + args.alpha * l1_regularization(model)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        output = output_clean.float()
+        loss = loss.float()
+        # measure accuracy and record loss
+        prec1 = utils.accuracy(output.data, target)[0]
+
+        losses.update(loss.item(), image.size(0))
+        top1.update(prec1.item(), image.size(0))
+
+        if (i + 1) % args.print_freq == 0:
+            end = time.time()
+            print(
+                "Epoch: [{0}][{1}/{2}]\t"
+                "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
+                "Accuracy {top1.val:.3f} ({top1.avg:.3f})\t"
+                "Time {3:.2f}".format(
+                    epoch, i, len(train_loader), end - start, loss=losses, top1=top1
                 )
-            # compute output
-            output_clean = model(image)
+            )
+            start = time.time()
 
-            loss = criterion(output_clean, target)
-            if l1:
-                loss = loss + args.alpha * l1_regularization(model)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            output = output_clean.float()
-            loss = loss.float()
-            # measure accuracy and record loss
-            prec1 = utils.accuracy(output.data, target)[0]
-
-            losses.update(loss.item(), image.size(0))
-            top1.update(prec1.item(), image.size(0))
-
-            if (i + 1) % args.print_freq == 0:
-                end = time.time()
-                print(
-                    "Epoch: [{0}][{1}/{2}]\t"
-                    "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
-                    "Accuracy {top1.val:.3f} ({top1.avg:.3f})\t"
-                    "Time {3:.2f}".format(
-                        epoch, i, len(train_loader), end - start, loss=losses, top1=top1
-                    )
-                )
-                start = time.time()
-
-        print("train_accuracy {top1.avg:.3f}".format(top1=top1))
-    else:
-        for i, (image, target) in enumerate(train_loader):
-            if epoch < args.warmup:
-                utils.warmup_lr(
-                    epoch, i + 1, optimizer, one_epoch_step=len(train_loader), args=args
-                )
-
-            image = image.cuda()
-            target = target.cuda()
-
-            # compute output
-            output_clean = model(image)
-
-            loss = criterion(output_clean, target)
-            if l1:
-                loss = loss + args.alpha * l1_regularization(model)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            output = output_clean.float()
-            loss = loss.float()
-            # measure accuracy and record loss
-            prec1 = utils.accuracy(output.data, target)[0]
-
-            losses.update(loss.item(), image.size(0))
-            top1.update(prec1.item(), image.size(0))
-
-            if (i + 1) % args.print_freq == 0:
-                end = time.time()
-                print(
-                    "Epoch: [{0}][{1}/{2}]\t"
-                    "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
-                    "Accuracy {top1.val:.3f} ({top1.avg:.3f})\t"
-                    "Time {3:.2f}".format(
-                        epoch, i, len(train_loader), end - start, loss=losses, top1=top1
-                    )
-                )
-                start = time.time()
-
-        print("train_accuracy {top1.avg:.3f}".format(top1=top1))
+    print("train_accuracy {top1.avg:.3f}".format(top1=top1))
 
     return top1.avg
 
