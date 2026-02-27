@@ -19,7 +19,16 @@ def _setup_device(args):
     return torch.device("cpu")
 
 
-def _prepare_non_imagenet_loaders(args):
+def _prepare_loaders(args, *, imagenet=False):
+    if imagenet:
+        model, retain_loader, forget_loader, val_loader = utils.setup_model_dataset(args)
+        print(len(retain_loader.dataset))
+        print(len(forget_loader.dataset))
+        loaders = OrderedDict(
+            retain=retain_loader, forget=forget_loader, val=val_loader, test=val_loader
+        )
+        return model, loaders, retain_loader.dataset, forget_loader.dataset
+
     model, train_loader_full, val_loader, test_loader, marked_loader = (
         utils.setup_model_dataset(args)
     )
@@ -32,16 +41,6 @@ def _prepare_non_imagenet_loaders(args):
         retain=retain_loader, forget=forget_loader, val=val_loader, test=test_loader
     )
     return model, loaders, retain_dataset, forget_dataset
-
-
-def _prepare_imagenet_loaders(args):
-    model, retain_loader, forget_loader, val_loader = utils.setup_model_dataset(args)
-    print(len(retain_loader.dataset))
-    print(len(forget_loader.dataset))
-    loaders = OrderedDict(
-        retain=retain_loader, forget=forget_loader, val=val_loader, test=val_loader
-    )
-    return model, loaders, retain_loader.dataset, forget_loader.dataset
 
 
 def _load_mask_and_unlearn(model, device, args, loaders, imagenet=False):
@@ -194,12 +193,9 @@ def run_forget(args, *, imagenet=False):
     if args.seed:
         utils.setup_seed(args.seed)
 
-    if imagenet:
-        model, loaders, retain_dataset, forget_dataset = _prepare_imagenet_loaders(args)
-    else:
-        model, loaders, retain_dataset, forget_dataset = _prepare_non_imagenet_loaders(
-            args
-        )
+    model, loaders, retain_dataset, forget_dataset = _prepare_loaders(
+        args, imagenet=imagenet
+    )
     model.cuda()
 
     model, evaluation_result = _load_mask_and_unlearn(
