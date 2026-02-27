@@ -1,7 +1,7 @@
 import argparse
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="PyTorch Lottery Tickets Experiments")
 
     ##################################### Dataset #################################################
@@ -146,4 +146,4 @@ def parse_args():
         default=4,
         help="The size of trigger of backdoor attack",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)

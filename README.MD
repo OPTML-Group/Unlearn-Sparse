@@ -45,6 +45,19 @@ The source code is organized as follows:
 ```main_backdoor.py```: contains the main executable code for backdoor cleanse.
 ## Commands
 
+### Unified entrypoint (recommended)
+
+```bash
+# Pruning profiles: imp | ls | sam | vit
+python -u main.py prune --profile imp --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}
+
+# Unlearning (non-ImageNet)
+python -u main.py unlearn --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --unlearn FT
+
+# Unlearning (ImageNet)
+python -u main.py unlearn --imagenet --dataset imagenet --arch resnet18 --imagenet_arch --save_dir ./runs/imagenet_resnet18 --mask ./runs/imagenet_resnet18/0model_SA_best.pth.tar --unlearn FT
+```
+
 ### 0) Set common variables
 
 ```bash
