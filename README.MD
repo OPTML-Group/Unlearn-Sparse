@@ -173,36 +173,33 @@ This command resumes interrupted long-running experiments, which is useful for r
 ## Code Structure
 The source code is organized as follows:
 
-```main.py```: unified CLI entrypoint. Dispatches to:
-- ```train``` -> ```pipelines/train_pipeline.py```
-- ```unlearn``` -> ```pipelines/forget_pipeline.py```
-- ```backdoor``` -> ```pipelines/backdoor_pipeline.py```
+- **Entrypoint**
+  - `main.py`: Unified CLI entrypoint.
+  - Subcommands:
+    - `train` -> `src/pipelines/train_pipeline.py`
+    - `unlearn` -> `src/pipelines/forget_pipeline.py`
+    - `backdoor` -> `src/pipelines/backdoor_pipeline.py`
 
-```core/arg_parser.py```: shared argument definitions used by all workflows.
+- **Core CLI / Utilities**
+  - `src/core/arg_parser.py`: Shared argument definitions used by all workflows.
+  - `src/core/utils.py`: Setup, checkpointing, data conversion, and general helper utilities.
 
-```pipelines/train_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
+- **Pipelines**
+  - `src/pipelines/train_pipeline.py`: Training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
+  - `src/pipelines/forget_pipeline.py`: Unlearning pipeline; loads sparse masks, runs unlearn methods, and evaluates accuracy/MIA.
+  - `src/pipelines/backdoor_pipeline.py`: Backdoor cleansing pipeline; builds poisoned data loaders and applies unlearning.
 
-```pipelines/forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
+- **Training / Optimization / Pruning**
+  - `src/trainer/`: Train/validate loops (standard SGD loop and SAM training loop).
+  - `src/optim/`: Optimization utilities (e.g., SAM and label-smoothing criterion).
+  - `src/optim/unlearn/`: Unlearning method implementations (e.g., `retrain`, `FT`, `GA`, and variants).
+  - `src/pruner/`: Pruning utilities and methods (mask extraction/application, OMP-style pruning, SynFlow logic).
 
-```pipelines/backdoor_pipeline.py```: backdoor cleansing pipeline. Builds poisoned data loaders and applies unlearning to mitigate attack behavior.
-
-```optim/unlearn/```: unlearning method implementations (e.g., ```retrain```, ```FT```, ```GA```, and variants).
-
-```optim/```: optimization utilities such as SAM and label-smoothing criterion.
-
-```pruner/```: pruning utilities and methods (mask extraction/application, OMP-style pruning, SynFlow-related logic).
-
-```trainer/```: train/validate loops, including standard SGD loop and SAM training loop.
-
-```evaluation/```: MIA evaluation code (including SVC-based MIA metrics).
-
-```models/```: model definitions.
-
-```dataio/dataset.py```: dataset loading/splitting and forget-sample marking utilities.
-
-```dataio/imagenet.py``` and ```dataio/lmdb_dataset.py```: ImageNet/LMDB data utilities.
-
-```core/utils.py```: utility functions for setup, checkpointing, data conversion, and helper routines.
+- **Data / Models / Evaluation**
+  - `src/dataio/dataset.py`: Dataset loading/splitting and forget-sample marking utilities.
+  - `src/dataio/imagenet.py` and `src/dataio/lmdb_dataset.py`: ImageNet / LMDB data utilities.
+  - `src/models/`: Model definitions.
+  - `src/evaluation/`: MIA evaluation code (including SVC-based MIA metrics).
 
 ## BibTeX
 
