@@ -3,19 +3,14 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-import torch.optim
-import torch.utils.data
 
-import arg_parser
 import pruner
 import unlearn
 import utils
 from trainer import validate
 
 
-def main():
-    args = arg_parser.parse_args()
-
+def run_backdoor(args):
     if torch.cuda.is_available():
         torch.cuda.set_device(int(args.gpu))
         device = torch.device(f"cuda:{int(args.gpu)}")
@@ -23,21 +18,13 @@ def main():
         device = torch.device("cpu")
 
     os.makedirs(args.save_dir, exist_ok=True)
-
     utils.setup_seed(args.seed)
-    # prepare dataset
+
     poison_label = args.class_to_replace
     args.class_to_replace = -1
 
-    (
-        model,
-        train_loader_full,
-        val_loader,
-        test_loader,
-        marked_loader,
-    ) = utils.setup_model_dataset(args)
+    model, _, val_loader, test_loader, marked_loader = utils.setup_model_dataset(args)
     model.cuda()
-
     forget_loader, retain_loader = utils.get_unlearn_loader(marked_loader, args)
 
     def poison_func(data, target):
@@ -70,12 +57,12 @@ def main():
 
     if args.resume:
         checkpoint = unlearn.load_unlearn_checkpoint(model, device, args)
+    else:
+        checkpoint = None
 
     if args.resume and checkpoint is not None:
         model, evaluation_result = checkpoint
     else:
-        # ================================pruning================================
-
         if args.mask and os.path.exists(args.mask):
             checkpoint = torch.load(args.mask, map_location=device)
             if "state_dict" in checkpoint.keys():
@@ -86,12 +73,9 @@ def main():
             pruner.check_sparsity(model)
         else:
             prune_method = pruner.get_prune_method(args.prune)
-
             prune_method(model, poisoned_train_loader, test_loader, criterion, args)
             os.makedirs(os.path.dirname(args.mask), exist_ok=True)
             torch.save(model.state_dict(), args.mask)
-
-        # ================================validate before================================
 
         evaluation_result = {}
         evaluation_result["test_acc"] = validate(test_loader, model, criterion, args)
@@ -99,18 +83,13 @@ def main():
             poisoned_test_loader, model, criterion, args
         )
 
-        # ================================unlearn================================
-
         unlearn_method = unlearn.get_unlearn_method(args.unlearn)
-
         unlearn_method(unlearn_data_loaders, model, criterion, args)
 
     if evaluation_result is None:
         evaluation_result = {}
 
     unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
-
-    # ================================validate after================================
 
     if "test_acc_unlearn" not in evaluation_result:
         evaluation_result["test_acc_unlearn"] = validate(
@@ -122,7 +101,3 @@ def main():
         )
 
     unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
-
-
-if __name__ == "__main__":
-    main()

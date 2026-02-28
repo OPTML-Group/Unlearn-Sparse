@@ -1,13 +1,18 @@
 import argparse
 
 import arg_parser
-from forget_pipeline import run_forget
-from pruning_pipeline import run_pruning
 
 
 def build_cli():
     parser = argparse.ArgumentParser(
-        description="Unified entrypoint for pruning and unlearning"
+        description=(
+            "Unified entrypoint for all workflows.\n\n"
+            "Entries:\n"
+            "  prune    Train + iterative pruning (replaces main_imp.py/main_ls.py/main_sam.py/main_vit.py/main_synflow.py)\n"
+            "  unlearn  Run machine unlearning (replaces main_forget.py/main_forget_imagenet.py)\n"
+            "  backdoor Run backdoor cleanse experiment (replaces main_backdoor.py)"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -15,15 +20,29 @@ def build_cli():
     prune.add_argument(
         "--profile",
         default="imp",
-        choices=["imp", "ls", "sam", "vit"],
-        help="Pruning/training profile",
+        choices=["imp", "ls", "sam", "vit", "synflow"],
+        help=(
+            "Pruning/training profile:\n"
+            "  imp -> standard IMP/OMP training pipeline\n"
+            "  ls  -> label-smoothing variant\n"
+            "  sam -> SAM optimizer variant\n"
+            "  vit -> ViT-style optimizer/scheduler variant\n"
+            "  synflow -> SynFlow pruning pipeline"
+        ),
     )
 
     unlearn = subparsers.add_parser("unlearn", help="Run unlearning")
     unlearn.add_argument(
         "--imagenet",
         action="store_true",
-        help="Use ImageNet-specific unlearning pipeline",
+        help=(
+            "Force ImageNet unlearning pipeline.\n"
+            "Usually not needed: --dataset imagenet is auto-detected."
+        ),
+    )
+
+    subparsers.add_parser(
+        "backdoor", help="Run backdoor cleanse pipeline (legacy: main_backdoor.py)"
     )
     return parser
 
@@ -34,10 +53,24 @@ def main():
     run_args = arg_parser.parse_args(passthrough)
 
     if cli_args.command == "prune":
-        run_pruning(run_args, profile_name=cli_args.profile)
+        from pruning_pipeline import run_pruning, run_synflow
+
+        if cli_args.profile == "synflow":
+            run_synflow(run_args)
+        else:
+            run_pruning(run_args, profile_name=cli_args.profile)
         return
 
-    run_forget(run_args, imagenet=cli_args.imagenet)
+    if cli_args.command == "backdoor":
+        from backdoor_pipeline import run_backdoor
+
+        run_backdoor(run_args)
+        return
+
+    from forget_pipeline import run_forget
+
+    inferred_imagenet = getattr(run_args, "dataset", None) == "imagenet"
+    run_forget(run_args, imagenet=(cli_args.imagenet or inferred_imagenet))
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from LS import LabelSmoothingCrossEntropy
 from pruner import (
     check_sparsity,
     extract_mask,
+    global_prune_model,
     prune_model_custom,
     pruning_model,
     pruning_model_random,
@@ -262,3 +263,152 @@ def run_pruning(args, profile_name):
         if args.rewind_epoch:
             for _ in range(args.rewind_epoch):
                 scheduler.step()
+
+
+def run_synflow(args):
+    print(args)
+
+    torch.cuda.set_device(int(args.gpu))
+    os.makedirs(args.save_dir, exist_ok=True)
+    if args.seed:
+        utils.setup_seed(args.seed)
+
+    setup = utils.setup_model_dataset(args)
+    if len(setup) == 5:
+        model, train_loader, val_loader, test_loader, _ = setup
+    elif len(setup) == 4:
+        model, train_loader, val_loader, test_loader = setup
+    elif len(setup) == 3:
+        model, train_loader, val_loader = setup
+        test_loader = val_loader
+    else:
+        raise ValueError("Unexpected dataset setup output for SynFlow.")
+    model.cuda()
+
+    criterion = torch.nn.CrossEntropyLoss()
+    decreasing_lr = list(map(int, args.decreasing_lr.split(",")))
+
+    if args.prune_type == "lt":
+        print("lottery tickets setting (rewind to the same random init)")
+        initialization = deepcopy(model.state_dict())
+    elif args.prune_type == "pt":
+        print("lottery tickets from best dense weight")
+        initialization = None
+    elif args.prune_type == "rewind_lt":
+        print("lottery tickets with early weight rewinding")
+        initialization = None
+    else:
+        raise ValueError("unknown prune_type")
+
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+    )
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=decreasing_lr, gamma=0.1
+    )
+
+    best_sa = 0
+    if args.resume:
+        print("resume from checkpoint {}".format(args.checkpoint))
+        checkpoint = torch.load(
+            args.checkpoint, map_location=torch.device("cuda:" + str(args.gpu))
+        )
+        best_sa = checkpoint["best_sa"]
+        start_epoch = checkpoint["epoch"]
+        all_result = checkpoint["result"]
+        start_state = checkpoint["state"]
+
+        if start_state > 0:
+            current_mask = extract_mask(checkpoint["state_dict"])
+            prune_model_custom(model, current_mask)
+            check_sparsity(model)
+            optimizer = torch.optim.SGD(
+                model.parameters(),
+                args.lr,
+                momentum=args.momentum,
+                weight_decay=args.weight_decay,
+            )
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=decreasing_lr, gamma=0.1
+            )
+
+        model.load_state_dict(checkpoint["state_dict"], strict=False)
+        x_rand = torch.rand(1, 3, args.input_size, args.input_size).cuda()
+        model.eval()
+        with torch.no_grad():
+            model(x_rand)
+
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        scheduler.load_state_dict(checkpoint["scheduler"])
+        initialization = checkpoint["init_weight"]
+        print("loading state:", start_state)
+        print("loading from epoch: ", start_epoch, "best_sa=", best_sa)
+        check_sparsity(model)
+    else:
+        all_result = {"train_ta": [], "test_ta": [], "val_ta": []}
+        start_epoch = 0
+
+    print(
+        "######################################## Start Standard Synflow Pruning ########################################"
+    )
+
+    if args.rate != 0:
+        global_prune_model(model, args.rate, "synflow", train_loader)
+        check_sparsity(model)
+
+    check_sparsity(model)
+    state = 0
+    for epoch in range(start_epoch, args.epochs):
+        start_time = time.time()
+        print(optimizer.state_dict()["param_groups"][0]["lr"])
+        acc = default_train(train_loader, model, criterion, optimizer, epoch, args)
+
+        tacc = validate(val_loader, model, criterion, args)
+        test_tacc = validate(test_loader, model, criterion, args)
+
+        scheduler.step()
+
+        all_result["train_ta"].append(acc)
+        all_result["val_ta"].append(tacc)
+        all_result["test_ta"].append(test_tacc)
+
+        is_best_sa = tacc > best_sa
+        best_sa = max(tacc, best_sa)
+
+        utils.save_checkpoint(
+            {
+                "state": state,
+                "result": all_result,
+                "epoch": epoch + 1,
+                "state_dict": model.state_dict(),
+                "best_sa": best_sa,
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
+                "init_weight": initialization,
+            },
+            is_SA_best=is_best_sa,
+            pruning=state,
+            save_path=args.save_dir,
+        )
+
+        plt.plot(all_result["train_ta"], label="train_acc")
+        plt.plot(all_result["val_ta"], label="val_acc")
+        plt.plot(all_result["test_ta"], label="test_acc")
+        plt.legend()
+        plt.savefig(os.path.join(args.save_dir, str(state) + "net_train.png"))
+        plt.close()
+        print("one epoch duration:{}".format(time.time() - start_time))
+
+    check_sparsity(model)
+    print("Performance on the test data set")
+    validate(test_loader, model, criterion, args)
+    if len(all_result["val_ta"]) != 0:
+        val_pick_best_epoch = np.argmax(np.array(all_result["val_ta"]))
+        print(
+            "* best SA = {}, Epoch = {}".format(
+                all_result["test_ta"][val_pick_best_epoch], val_pick_best_epoch + 1
+            )
+        )

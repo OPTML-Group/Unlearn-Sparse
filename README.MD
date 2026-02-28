@@ -38,25 +38,8 @@ The source code is organized as follows:
 
 ```utils.py```: contains the utility functions. 
 
-```main_imp.py```: contains the code for training and pruning. 
-
-```main_forget.py```: contains the main executable code for unlearning. 
-
-```main_backdoor.py```: contains the main executable code for backdoor cleanse.
+```main.py```: unified entrypoint for pruning / unlearning / backdoor workflows.
 ## Commands
-
-### Unified entrypoint (recommended)
-
-```bash
-# Pruning profiles: imp | ls | sam | vit
-python -u main.py prune --profile imp --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}
-
-# Unlearning (non-ImageNet)
-python -u main.py unlearn --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --unlearn FT
-
-# Unlearning (ImageNet)
-python -u main.py unlearn --imagenet --dataset imagenet --arch resnet18 --imagenet_arch --save_dir ./runs/imagenet_resnet18 --mask ./runs/imagenet_resnet18/0model_SA_best.pth.tar --unlearn FT
-```
 
 ### 0) Set common variables
 
@@ -68,139 +51,89 @@ SAVE_DIR=./runs/${DATASET}_${ARCH}
 MASK_PATH=${SAVE_DIR}/0model_SA_best.pth.tar
 ```
 
-### 1) Train + prune (generate sparse checkpoint/mask)
-
-#### OMP (`main_imp.py`)
+### 1) Train + prune (single entry: `prune`)
 
 ```bash
-python -u main_imp.py \
-  --data ${DATA} \
-  --dataset ${DATASET} \
-  --arch ${ARCH} \
-  --save_dir ${SAVE_DIR} \
-  --prune_type rewind_lt \
-  --rewind_epoch 8 \
-  --rate 0.95 \
-  --pruning_times 1 \
-  --workers 8
+# OMP-like one-shot pruning
+python -u main.py prune --profile imp \
+  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
+  --save_dir ${SAVE_DIR} --prune_type rewind_lt --rewind_epoch 8 \
+  --rate 0.95 --pruning_times 1 --workers 8
+
+# IMP iterative pruning
+python -u main.py prune --profile imp \
+  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
+  --save_dir ${SAVE_DIR} --prune_type rewind_lt --rewind_epoch 8 \
+  --rate 0.2 --pruning_times 5 --workers 8
+
+# SynFlow
+python -u main.py prune --profile synflow \
+  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
+  --save_dir ${SAVE_DIR}_synflow --prune_type rewind_lt --rewind_epoch 8 \
+  --rate 0.95 --pruning_times 1 --workers 8
 ```
 
-#### IMP (`main_imp.py`)
+Optional pruning profiles:
 
 ```bash
-python -u main_imp.py \
-  --data ${DATA} \
-  --dataset ${DATASET} \
-  --arch ${ARCH} \
-  --save_dir ${SAVE_DIR} \
-  --prune_type rewind_lt \
-  --rewind_epoch 8 \
-  --rate 0.2 \
-  --pruning_times 5 \
-  --workers 8
+python -u main.py prune --profile ls  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_ls
+python -u main.py prune --profile sam --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_sam
+python -u main.py prune --profile vit --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_vit
 ```
 
-#### SynFlow (`main_synflow.py`)
+### 2) Unlearning (single entry: `unlearn`)
 
-```bash
-python -u main_synflow.py \
-  --data ${DATA} \
-  --dataset ${DATASET} \
-  --arch ${ARCH} \
-  --save_dir ${SAVE_DIR}_synflow \
-  --prune_type rewind_lt \
-  --rewind_epoch 8 \
-  --rate 0.95 \
-  --pruning_times 1 \
-  --workers 8
-```
+Forget-setting flags:
 
-#### Optional training variants
-
-```bash
-# Label smoothing training+pruning
-python -u main_ls.py --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_ls
-
-# SAM training+pruning
-python -u main_sam.py --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_sam
-
-# ViT-style optimizer/scheduler profile
-python -u main_vit.py --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_vit
-```
-
-### 2) Unlearning (`main_forget.py`)
-
-#### Forget setting (important)
-
-- `--num_indexes_to_replace`: number of samples to forget (class-conditioned sampling).
+- `--num_indexes_to_replace`: number of samples to forget.
 - `--class_to_replace`: class id to forget from (default `0`).
 - `--mask`: sparse checkpoint path from pruning stage.
 
-#### Recommended baselines
-
 ```bash
 # Retrain
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
+python -u main.py unlearn --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
   --dataset ${DATASET} --arch ${ARCH} --unlearn retrain \
   --num_indexes_to_replace 4500 --unlearn_epochs 160 --unlearn_lr 0.1
 
 # FT
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
+python -u main.py unlearn --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
   --dataset ${DATASET} --arch ${ARCH} --unlearn FT \
   --num_indexes_to_replace 4500 --unlearn_epochs 10 --unlearn_lr 0.01
 
 # GA
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
+python -u main.py unlearn --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
   --dataset ${DATASET} --arch ${ARCH} --unlearn GA \
   --num_indexes_to_replace 4500 --unlearn_epochs 5 --unlearn_lr 0.0001
-
-# Fisher (FF)
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
-  --dataset ${DATASET} --arch ${ARCH} --unlearn fisher_new \
-  --num_indexes_to_replace 4500 --alpha 0.2
-
-# Wfisher (IU)
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
-  --dataset ${DATASET} --arch ${ARCH} --unlearn wfisher \
-  --num_indexes_to_replace 4500 --alpha 0.2
-
-# L1-sparse unlearning
-python -u main_forget.py --save_dir ${SAVE_DIR} --mask ${MASK_PATH} \
-  --dataset ${DATASET} --arch ${ARCH} --unlearn FT_prune \
-  --num_indexes_to_replace 4500 --unlearn_epochs 10 --unlearn_lr 0.01 --alpha 0.2
 ```
 
-### 3) ImageNet unlearning
+ImageNet unlearning:
 
 ```bash
-python -u main_forget_imagenet.py \
-  --dataset imagenet \
-  --arch resnet18 \
-  --imagenet_arch \
+python -u main.py unlearn \
+  --dataset imagenet --arch resnet18 --imagenet_arch \
   --save_dir ./runs/imagenet_resnet18 \
   --mask ./runs/imagenet_resnet18/0model_SA_best.pth.tar \
-  --class_to_replace 0 \
-  --unlearn FT --unlearn_epochs 5 --unlearn_lr 0.001
+  --class_to_replace 0 --unlearn FT --unlearn_epochs 5 --unlearn_lr 0.001
 ```
 
-### 4) Trojan model cleanse (`main_backdoor.py`)
+### 3) Backdoor cleanse (single entry: `backdoor`)
 
 ```bash
-python -u main_backdoor.py \
+python -u main.py backdoor \
   --save_dir ${SAVE_DIR}_backdoor \
   --mask ${SAVE_DIR}_backdoor/mask.pt \
   --dataset ${DATASET} --arch ${ARCH} \
   --unlearn FT --num_indexes_to_replace 4500 --class_to_replace 0
 ```
 
-### 5) Resume interrupted runs
+### 4) Resume interrupted runs
 
 ```bash
 # resume pruning
-python -u main_imp.py --resume --checkpoint ${SAVE_DIR}/0checkpoint.pth.tar --save_dir ${SAVE_DIR}
+python -u main.py prune --profile imp --resume --checkpoint ${SAVE_DIR}/0checkpoint.pth.tar --save_dir ${SAVE_DIR}
 
 # resume unlearning
-python -u main_forget.py --resume --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --unlearn FT
+python -u main.py unlearn --resume --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --unlearn FT
 ```
 
 ## BibTeX
