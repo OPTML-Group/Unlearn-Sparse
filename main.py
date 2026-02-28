@@ -23,7 +23,7 @@ def build_cli():
         default="imp",
         choices=["imp", "ls", "sam", "vit", "synflow"],
         help=(
-            "Pruning/training profile:\n"
+            "Training profile (with pruning strategy):\n"
             "  imp -> standard IMP/OMP training pipeline\n"
             "  ls  -> label-smoothing variant\n"
             "  sam -> SAM optimizer variant\n"

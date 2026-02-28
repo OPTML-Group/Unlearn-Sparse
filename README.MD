@@ -74,13 +74,21 @@ python -u main.py train --profile synflow \
 ```
 This command trains a model and then prunes it into a sparse structure, which is the paper's "prune first" step for creating a sparse prior before unlearning; ```pruning_times``` controls whether pruning is one-shot or iterative, and the key output is a sparse checkpoint (for example ```0model_SA_best.pth.tar```) for the next stage.
 
-Optional pruning profiles:
+Other training profiles:
 
 ```bash
 python -u main.py train --profile ls  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_ls
 python -u main.py train --profile sam --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_sam
 python -u main.py train --profile vit --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_vit
 ```
+
+Profile summary (high level):
+
+- ```imp```: standard SGD + cross-entropy baseline training, then iterative pruning.
+- ```ls```: same pipeline as baseline, but uses label smoothing loss during training.
+- ```sam```: same pipeline shape, but uses SAM optimizer to seek flatter minima before/through pruning.
+- ```vit```: keeps the same prune framework, but uses a ViT-style optimizer/scheduler setup (Adam + cosine schedule).
+- ```synflow```: applies SynFlow global pruning first, then trains the pruned model.
 
 ### 2) Unlearning (single entry: `unlearn`)
 
@@ -129,7 +137,7 @@ python -u main.py unlearn \
   --mask ./runs/imagenet_resnet18/0model_SA_best.pth.tar \
   --class_to_replace 0 --unlearn FT --unlearn_epochs 5 --unlearn_lr 0.001
 ```
-This command removes the influence of a target class or selected samples from a trained model and runs on top of the sparse model from ```prune``` (via ```--mask```), which is the central idea in this work; different ```--unlearn``` choices trade off quality and speed (for example, ```retrain``` is strongest but slowest, ```FT``` is a fast fine-tuning baseline, and ```GA``` actively pushes the model away from forgotten data), and the outputs include both utility and privacy-style signals such as accuracy and MIA.
+This command removes the influence of a target class or selected samples from a trained model and runs on top of the sparse model from ```train``` (via ```--mask```), which is the central idea in this work; different ```--unlearn``` choices trade off quality and speed (for example, ```retrain``` is strongest but slowest, ```FT``` is a fast fine-tuning baseline, and ```GA``` actively pushes the model away from forgotten data), and the outputs include both utility and privacy-style signals such as accuracy and MIA.
 
 Available ```--unlearn``` methods (algorithm-level):
 
