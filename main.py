@@ -8,7 +8,8 @@ def build_cli():
         description=(
             "Unified entrypoint for all workflows.\n\n"
             "Entries:\n"
-            "  prune    Train + iterative pruning (replaces main_imp.py/main_ls.py/main_sam.py/main_vit.py/main_synflow.py)\n"
+            "  train    Train + iterative pruning (replaces main_imp.py/main_ls.py/main_sam.py/main_vit.py/main_synflow.py)\n"
+            "  prune    Legacy alias of 'train'\n"
             "  unlearn  Run machine unlearning (replaces main_forget.py/main_forget_imagenet.py)\n"
             "  backdoor Run backdoor cleanse experiment (replaces main_backdoor.py)"
         ),
@@ -16,8 +17,8 @@ def build_cli():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    prune = subparsers.add_parser("prune", help="Train + iterative pruning")
-    prune.add_argument(
+    def _add_train_profile_arg(subparser):
+        subparser.add_argument(
         "--profile",
         default="imp",
         choices=["imp", "ls", "sam", "vit", "synflow"],
@@ -30,6 +31,13 @@ def build_cli():
             "  synflow -> SynFlow pruning pipeline"
         ),
     )
+
+    train = subparsers.add_parser("train", help="Train + iterative pruning")
+    _add_train_profile_arg(train)
+
+    # Keep backward compatibility with old command name.
+    prune = subparsers.add_parser("prune", help="Legacy alias of 'train'")
+    _add_train_profile_arg(prune)
 
     unlearn = subparsers.add_parser("unlearn", help="Run unlearning")
     unlearn.add_argument(
@@ -52,8 +60,8 @@ def main():
     cli_args, passthrough = cli.parse_known_args()
     run_args = arg_parser.parse_args(passthrough)
 
-    if cli_args.command == "prune":
-        from pipelines.pruning_pipeline import run_pruning, run_synflow
+    if cli_args.command in {"train", "prune"}:
+        from pipelines.train_pipeline import run_pruning, run_synflow
 
         if cli_args.profile == "synflow":
             run_synflow(run_args)

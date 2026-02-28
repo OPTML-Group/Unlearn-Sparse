@@ -172,9 +172,10 @@ def run_pruning(args, profile_name):
         "######################################## Start Standard Training Iterative Pruning ########################################"
     )
 
-    for state in range(start_state, args.pruning_times):
+    total_training_rounds = args.pruning_times + 1
+    for state in range(start_state, total_training_rounds):
         print("******************************************")
-        print("pruning state", state)
+        print("training/pruning state", state)
         print("******************************************")
 
         check_sparsity(model)
@@ -238,6 +239,12 @@ def run_pruning(args, profile_name):
         all_result = {"train_ta": [], "test_ta": [], "val_ta": []}
         best_sa = 0
         start_epoch = 0
+
+        # With the new semantics, pruning_times means "number of pruning steps".
+        # We therefore run one extra final training round without another prune.
+        if state == args.pruning_times:
+            print("final training round reached; skip pruning and finish")
+            continue
 
         if args.prune_type == "pt":
             print("* loading pretrained weight")

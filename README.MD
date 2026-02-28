@@ -33,13 +33,13 @@ conda env create -f environment.yml
 The source code is organized as follows:
 
 ```main.py```: unified CLI entrypoint. Dispatches to:
-- ```prune``` -> ```pipelines/pruning_pipeline.py```
+- ```train``` -> ```pipelines/train_pipeline.py```
 - ```unlearn``` -> ```pipelines/forget_pipeline.py```
 - ```backdoor``` -> ```pipelines/backdoor_pipeline.py```
 
 ```core/arg_parser.py```: shared argument definitions used by all workflows.
 
-```pipelines/pruning_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
+```pipelines/train_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
 
 ```pipelines/forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
 
@@ -65,7 +65,7 @@ The source code is organized as follows:
 
 ## Quick Start
 
-1. Run ```prune``` first to produce a sparse checkpoint.
+1. Run ```train``` first to produce a sparse checkpoint.
 2. Run ```unlearn``` with that checkpoint (via ```--mask```) to remove target-data influence.
 3. Check accuracy + MIA results, and optionally run ```backdoor``` for security-focused evaluation.
 
@@ -81,23 +81,23 @@ SAVE_DIR=./runs/${DATASET}_${ARCH}
 MASK_PATH=${SAVE_DIR}/0model_SA_best.pth.tar
 ```
 
-### 1) Train + prune (single entry: `prune`)
+### 1) Train + prune (single entry: `train`)
 
 ```bash
 # OMP
-python -u main.py prune --profile imp \
+python -u main.py train --profile imp \
   --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
   --save_dir ${SAVE_DIR} --prune_type rewind_lt --rewind_epoch 8 \
   --rate 0.95 --pruning_times 1 --workers 8
 
 # IMP
-python -u main.py prune --profile imp \
+python -u main.py train --profile imp \
   --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
   --save_dir ${SAVE_DIR} --prune_type rewind_lt --rewind_epoch 8 \
   --rate 0.2 --pruning_times 5 --workers 8
 
 # SynFlow
-python -u main.py prune --profile synflow \
+python -u main.py train --profile synflow \
   --data ${DATA} --dataset ${DATASET} --arch ${ARCH} \
   --save_dir ${SAVE_DIR}_synflow --prune_type rewind_lt --rewind_epoch 8 \
   --rate 0.95 --pruning_times 1 --workers 8
@@ -107,9 +107,9 @@ This command trains a model and then prunes it into a sparse structure, which is
 Optional pruning profiles:
 
 ```bash
-python -u main.py prune --profile ls  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_ls
-python -u main.py prune --profile sam --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_sam
-python -u main.py prune --profile vit --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_vit
+python -u main.py train --profile ls  --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_ls
+python -u main.py train --profile sam --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_sam
+python -u main.py train --profile vit --data ${DATA} --dataset ${DATASET} --arch ${ARCH} --save_dir ${SAVE_DIR}_vit
 ```
 
 ### 2) Unlearning (single entry: `unlearn`)
@@ -185,7 +185,7 @@ This command evaluates unlearning in a security setting by first simulating pois
 
 ```bash
 # resume pruning
-python -u main.py prune --profile imp --resume --checkpoint ${SAVE_DIR}/0checkpoint.pth.tar --save_dir ${SAVE_DIR}
+python -u main.py train --profile imp --resume --checkpoint ${SAVE_DIR}/0checkpoint.pth.tar --save_dir ${SAVE_DIR}
 
 # resume unlearning
 python -u main.py unlearn --resume --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --unlearn FT
