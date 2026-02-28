@@ -22,46 +22,16 @@
 </table>
 
 This is the official code repository for the NeurIPS 2023 Spotlight paper [Model Sparsity Can Simplify Machine Unlearning](https://arxiv.org/abs/2304.04934).
+
 ## Abstract
+
 In response to recent data regulation requirements, machine unlearning (MU) has emerged as a critical process to remove the influence of specific examples from a given model. Although exact unlearning can be achieved through complete model retraining using the remaining dataset, the associated computational costs have driven the development of efficient, approximate unlearning techniques. Moving beyond data-centric MU approaches, our study introduces a novel model-based perspective: model sparsification via weight pruning, which is capable of reducing the gap between exact unlearning and approximate unlearning. We show in both theory and practice that model sparsity can boost the multi-criteria unlearning performance of an approximate unlearner, closing the approximation gap, while continuing to be efficient. This leads to a new MU paradigm, termed prune first, then unlearn, which infuses a sparse model prior into the unlearning process. Building on this insight, we also develop a sparsity-aware unlearning method that utilizes sparsity regularization to enhance the training process of approximate unlearning. Extensive experiments show that our proposals consistently benefit MU in various unlearning scenarios. A notable highlight is the 77% unlearning efficacy gain of fine-tuning (one of the simplest unlearning methods) when using sparsity-aware unlearning. Furthermore, we demonstrate the practical impact of our proposed MU methods in addressing other machine learning challenges, such as defending against backdoor attacks and enhancing transfer learning.
+
 ## Requirements
+
 ```
 conda env create -f environment.yml
 ```
-
-## Code Structure
-The source code is organized as follows:
-
-```main.py```: unified CLI entrypoint. Dispatches to:
-- ```train``` -> ```pipelines/train_pipeline.py```
-- ```unlearn``` -> ```pipelines/forget_pipeline.py```
-- ```backdoor``` -> ```pipelines/backdoor_pipeline.py```
-
-```core/arg_parser.py```: shared argument definitions used by all workflows.
-
-```pipelines/train_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
-
-```pipelines/forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
-
-```pipelines/backdoor_pipeline.py```: backdoor cleansing pipeline. Builds poisoned data loaders and applies unlearning to mitigate attack behavior.
-
-```optim/unlearn/```: unlearning method implementations (e.g., ```retrain```, ```FT```, ```GA```, and variants).
-
-```optim/```: optimization utilities such as SAM and label-smoothing criterion.
-
-```pruner/```: pruning utilities and methods (mask extraction/application, OMP-style pruning, SynFlow-related logic).
-
-```trainer/```: train/validate loops, including standard SGD loop and SAM training loop.
-
-```evaluation/```: MIA evaluation code (including SVC-based MIA metrics).
-
-```models/```: model definitions.
-
-```dataio/dataset.py```: dataset loading/splitting and forget-sample marking utilities.
-
-```dataio/imagenet.py``` and ```dataio/lmdb_dataset.py```: ImageNet/LMDB data utilities.
-
-```core/utils.py```: utility functions for setup, checkpointing, data conversion, and helper routines.
 
 ## Quick Start
 
@@ -192,7 +162,42 @@ python -u main.py unlearn --resume --save_dir ${SAVE_DIR} --mask ${MASK_PATH} --
 ```
 This command resumes interrupted long-running experiments, which is useful for reproducibility and large sweeps where pruning or unlearning may take many hours.
 
+## Code Structure
+The source code is organized as follows:
+
+```main.py```: unified CLI entrypoint. Dispatches to:
+- ```train``` -> ```pipelines/train_pipeline.py```
+- ```unlearn``` -> ```pipelines/forget_pipeline.py```
+- ```backdoor``` -> ```pipelines/backdoor_pipeline.py```
+
+```core/arg_parser.py```: shared argument definitions used by all workflows.
+
+```pipelines/train_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
+
+```pipelines/forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
+
+```pipelines/backdoor_pipeline.py```: backdoor cleansing pipeline. Builds poisoned data loaders and applies unlearning to mitigate attack behavior.
+
+```optim/unlearn/```: unlearning method implementations (e.g., ```retrain```, ```FT```, ```GA```, and variants).
+
+```optim/```: optimization utilities such as SAM and label-smoothing criterion.
+
+```pruner/```: pruning utilities and methods (mask extraction/application, OMP-style pruning, SynFlow-related logic).
+
+```trainer/```: train/validate loops, including standard SGD loop and SAM training loop.
+
+```evaluation/```: MIA evaluation code (including SVC-based MIA metrics).
+
+```models/```: model definitions.
+
+```dataio/dataset.py```: dataset loading/splitting and forget-sample marking utilities.
+
+```dataio/imagenet.py``` and ```dataio/lmdb_dataset.py```: ImageNet/LMDB data utilities.
+
+```core/utils.py```: utility functions for setup, checkpointing, data conversion, and helper routines.
+
 ## BibTeX
+
 If you find this repository or the ideas presented in our paper useful, please consider citing.
 ```
 @inproceedings{jia2023model,
