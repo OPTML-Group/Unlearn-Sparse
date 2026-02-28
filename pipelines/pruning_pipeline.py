@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import utils
-from LS import LabelSmoothingCrossEntropy
+from core import utils
+from optim.LS import LabelSmoothingCrossEntropy
 from pruner import (
     check_sparsity,
     extract_mask,
@@ -46,7 +46,7 @@ def _build_scheduler(args, optimizer, *, mode):
 
 def _build_optimizer(args, model, *, mode):
     if mode == "sam_initial":
-        from SAM import SAM
+        from optim.SAM import SAM
 
         return SAM(
             model.parameters(),

@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -7,10 +6,9 @@ import numpy as np
 import torch
 
 import pruner
-import utils
+from core import utils
 from pruner import extract_mask, prune_model_custom, remove_prune
 
-sys.path.append(".")
 from trainer import validate
 
 

@@ -1,6 +1,6 @@
 import argparse
 
-import arg_parser
+from core import arg_parser
 
 
 def build_cli():
@@ -53,7 +53,7 @@ def main():
     run_args = arg_parser.parse_args(passthrough)
 
     if cli_args.command == "prune":
-        from pruning_pipeline import run_pruning, run_synflow
+        from pipelines.pruning_pipeline import run_pruning, run_synflow
 
         if cli_args.profile == "synflow":
             run_synflow(run_args)
@@ -62,12 +62,12 @@ def main():
         return
 
     if cli_args.command == "backdoor":
-        from backdoor_pipeline import run_backdoor
+        from pipelines.backdoor_pipeline import run_backdoor
 
         run_backdoor(run_args)
         return
 
-    from forget_pipeline import run_forget
+    from pipelines.forget_pipeline import run_forget
 
     inferred_imagenet = getattr(run_args, "dataset", None) == "imagenet"
     run_forget(run_args, imagenet=(cli_args.imagenet or inferred_imagenet))

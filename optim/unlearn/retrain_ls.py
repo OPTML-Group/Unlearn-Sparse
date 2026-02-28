@@ -1,4 +1,4 @@
-from LS import LabelSmoothingCrossEntropy
+from optim.LS import LabelSmoothingCrossEntropy
 from trainer import train
 
 from .impl import iterative_unlearn

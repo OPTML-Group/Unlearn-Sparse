@@ -4,8 +4,8 @@ import time
 
 import torch
 
-import utils
-from imagenet import get_x_y_from_data_dict
+from core import utils
+from dataio.imagenet import get_x_y_from_data_dict
 
 
 def l1_regularization(model):

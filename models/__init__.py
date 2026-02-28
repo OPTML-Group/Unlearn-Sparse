@@ -1,8 +1,12 @@
 from .ResNet import *
 from .ResNets import *
-from .swin import *
 from .VGG import *
 from .VGG_LTH import *
+
+try:
+    from .swin import *
+except ModuleNotFoundError:
+    swin_t = None
 
 model_dict = {
     "resnet18": resnet18,
@@ -12,5 +16,7 @@ model_dict = {
     "resnet56s": resnet56s,
     "vgg16_bn": vgg16_bn,
     "vgg16_bn_lth": vgg16_bn_lth,
-    "swin_t": swin_t,
 }
+
+if swin_t is not None:
+    model_dict["swin_t"] = swin_t

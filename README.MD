@@ -33,19 +33,21 @@ conda env create -f environment.yml
 The source code is organized as follows:
 
 ```main.py```: unified CLI entrypoint. Dispatches to:
-- ```prune``` -> ```pruning_pipeline.py```
-- ```unlearn``` -> ```forget_pipeline.py```
-- ```backdoor``` -> ```backdoor_pipeline.py```
+- ```prune``` -> ```pipelines/pruning_pipeline.py```
+- ```unlearn``` -> ```pipelines/forget_pipeline.py```
+- ```backdoor``` -> ```pipelines/backdoor_pipeline.py```
 
-```arg_parser.py```: shared argument definitions used by all workflows.
+```core/arg_parser.py```: shared argument definitions used by all workflows.
 
-```pruning_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
+```pipelines/pruning_pipeline.py```: training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
 
-```forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
+```pipelines/forget_pipeline.py```: unlearning pipeline. Loads sparse masks, runs unlearn methods, and executes accuracy/MIA evaluations.
 
-```backdoor_pipeline.py```: backdoor cleansing pipeline. Builds poisoned data loaders and applies unlearning to mitigate attack behavior.
+```pipelines/backdoor_pipeline.py```: backdoor cleansing pipeline. Builds poisoned data loaders and applies unlearning to mitigate attack behavior.
 
-```unlearn/```: unlearning method implementations (e.g., ```retrain```, ```FT```, ```GA```, and variants).
+```optim/unlearn/```: unlearning method implementations (e.g., ```retrain```, ```FT```, ```GA```, and variants).
+
+```optim/```: optimization utilities such as SAM and label-smoothing criterion.
 
 ```pruner/```: pruning utilities and methods (mask extraction/application, OMP-style pruning, SynFlow-related logic).
 
@@ -55,9 +57,11 @@ The source code is organized as follows:
 
 ```models/```: model definitions.
 
-```dataset.py```: dataset loading/splitting and forget-sample marking utilities.
+```dataio/dataset.py```: dataset loading/splitting and forget-sample marking utilities.
 
-```utils.py```: utility functions for setup, checkpointing, data conversion, and helper routines.
+```dataio/imagenet.py``` and ```dataio/lmdb_dataset.py```: ImageNet/LMDB data utilities.
+
+```core/utils.py```: utility functions for setup, checkpointing, data conversion, and helper routines.
 
 ## Quick Start
 

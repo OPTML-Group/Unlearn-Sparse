@@ -1,9 +1,7 @@
 import os
-import sys
 
 import torch
 import torchvision
-from datasets.load import load_dataset
 from torch.utils.data import DataLoader, Subset
 
 # sys.path.append(".")
@@ -19,6 +17,8 @@ def prepare_data(
     val_subset_indices=None,
     data_path="/localscratch/dataset",
 ):
+    from datasets.load import load_dataset
+
     path = os.path.join(data_path, "huggingface")
     if dataset == "imagenet":
         train_set = load_dataset(
