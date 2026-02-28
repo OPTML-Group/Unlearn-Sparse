@@ -1,11 +1,12 @@
-import copy
-import os
 import time
 
 import torch
 
-from core import utils
-from dataio.imagenet import get_x_y_from_data_dict
+from src.core import utils
+
+from .impl import iterative_unlearn
+
+from src.dataio.imagenet import get_x_y_from_data_dict
 
 
 def l1_regularization(model):
@@ -13,20 +14,6 @@ def l1_regularization(model):
     for param in model.parameters():
         params_vec.append(param.view(-1))
     return torch.linalg.norm(torch.cat(params_vec), ord=1)
-
-
-def get_optimizer_and_scheduler(model, args):
-    decreasing_lr = list(map(int, args.decreasing_lr.split(",")))
-    optimizer = torch.optim.SGD(
-        model.parameters(),
-        args.lr,
-        momentum=args.momentum,
-        weight_decay=args.weight_decay,
-    )
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=decreasing_lr, gamma=0.1
-    )
-    return optimizer, scheduler
 
 
 def _get_batch(data, args):
@@ -39,7 +26,10 @@ def _get_batch(data, args):
     return image.cuda(), target.cuda()
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
+@iterative_unlearn
+def GA(data_loaders, model, criterion, optimizer, epoch, args):
+    train_loader = data_loaders["forget"]
+    print(len(train_loader))
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
 
@@ -57,10 +47,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
 
         # compute output
         output_clean = model(image)
+        loss = -criterion(output_clean, target)
 
-        loss = criterion(output_clean, target)
-        if l1:
-            loss = loss + args.alpha * l1_regularization(model)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -90,32 +78,37 @@ def train(train_loader, model, criterion, optimizer, epoch, args, l1=False):
     return top1.avg
 
 
-def train_sam_epoch(train_loader, model, criterion, optimizer, epoch, args):
+@iterative_unlearn
+def GA_l1(data_loaders, model, criterion, optimizer, epoch, args):
+    train_loader = data_loaders["forget"]
+
     losses = utils.AverageMeter()
     top1 = utils.AverageMeter()
-    model.train()
-    start = time.time()
 
-    for i, data in enumerate(train_loader):
+    # switch to train mode
+    model.train()
+
+    start = time.time()
+    for i, (image, target) in enumerate(train_loader):
         if epoch < args.warmup:
             utils.warmup_lr(
                 epoch, i + 1, optimizer, one_epoch_step=len(train_loader), args=args
             )
 
-        image, target = _get_batch(data, args)
+        image = image.cuda()
+        target = target.cuda()
 
+        # compute output
         output_clean = model(image)
-        loss = criterion(output_clean, target)
-        loss.backward()
-        optimizer.first_step(zero_grad=True)
+        loss = -criterion(output_clean, target) + args.alpha * l1_regularization(model)
 
-        output_clean = model(image)
-        loss = criterion(output_clean, target)
+        optimizer.zero_grad()
         loss.backward()
-        optimizer.second_step(zero_grad=True)
+        optimizer.step()
 
         output = output_clean.float()
         loss = loss.float()
+        # measure accuracy and record loss
         prec1 = utils.accuracy(output.data, target)[0]
 
         losses.update(loss.item(), image.size(0))
@@ -134,27 +127,5 @@ def train_sam_epoch(train_loader, model, criterion, optimizer, epoch, args):
             start = time.time()
 
     print("train_accuracy {top1.avg:.3f}".format(top1=top1))
+
     return top1.avg
-
-
-def train_with_rewind(model, optimizer, scheduler, train_loader, criterion, args):
-    rewind_state_dict = None
-    for epoch in range(args.epochs):
-        start_time = time.time()
-        print(optimizer.state_dict()["param_groups"][0]["lr"])
-        train(train_loader, model, criterion, optimizer, epoch, args)
-
-        if (epoch + 1) == args.rewind_epoch:
-            torch.save(
-                model.state_dict(),
-                os.path.join(
-                    args.save_dir, "epoch_{}_rewind_weight.pt".format(epoch + 1)
-                ),
-            )
-            if args.prune_type == "rewind_lt":
-                rewind_state_dict = copy.deepcopy(model.state_dict())
-
-        scheduler.step()
-        print("one epoch duration:{}".format(time.time() - start_time))
-
-    return rewind_state_dict

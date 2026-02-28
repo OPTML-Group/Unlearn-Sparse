@@ -1,6 +1,6 @@
 import torch
 
-from trainer import train_sam_epoch
+from src.trainer import train_sam_epoch
 
 from .impl import iterative_unlearn
 
@@ -8,7 +8,7 @@ from .impl import iterative_unlearn
 @iterative_unlearn
 def retrain_sam(data_loaders, model, criterion, optimizer, epoch, args):
     base_optimizer = torch.optim.SGD
-    from optim.SAM import SAM
+    from src.optim.SAM import SAM
 
     sam_optimizer = SAM(
         model.parameters(),

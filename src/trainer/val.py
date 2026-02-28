@@ -1,7 +1,7 @@
 import torch
 
-from core import utils
-from dataio.imagenet import get_x_y_from_data_dict
+from src.core import utils
+from src.dataio.imagenet import get_x_y_from_data_dict
 
 
 def _get_batch(data, args):

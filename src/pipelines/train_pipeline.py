@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from core import utils
-from optim.LS import LabelSmoothingCrossEntropy
-from pruner import (
+from src.core import utils
+from src.optim.LS import LabelSmoothingCrossEntropy
+from src.pruner import (
     check_sparsity,
     extract_mask,
     global_prune_model,
@@ -17,9 +17,9 @@ from pruner import (
     pruning_model_random,
     remove_prune,
 )
-from trainer import train as default_train
-from trainer import train_sam_epoch
-from trainer import validate
+from src.trainer import train as default_train
+from src.trainer import train_sam_epoch
+from src.trainer import validate
 
 
 def _imagenet_lambda_scheduler(args, optimizer, total_epochs):
@@ -46,7 +46,7 @@ def _build_scheduler(args, optimizer, *, mode):
 
 def _build_optimizer(args, model, *, mode):
     if mode == "sam_initial":
-        from optim.SAM import SAM
+        from src.optim.SAM import SAM
 
         return SAM(
             model.parameters(),

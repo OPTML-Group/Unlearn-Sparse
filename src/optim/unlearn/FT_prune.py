@@ -1,8 +1,7 @@
 import copy
 
-import pruner
-import trainer
-
+import src.pruner as pruner
+import src.trainer as trainer
 from .FT import FT, FT_l1
 
 

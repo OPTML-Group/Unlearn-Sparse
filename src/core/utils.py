@@ -16,9 +16,9 @@ import numpy as np
 import torch
 from torchvision import transforms
 
-from dataio.dataset import *
-from dataio.dataset import TinyImageNet
-from models import *
+from src.dataio.dataset import *
+from src.dataio.dataset import TinyImageNet
+from src.models import *
 
 __all__ = [
     "setup_model_dataset",
@@ -235,7 +235,7 @@ def setup_model_dataset(args):
     elif args.dataset == "imagenet":
         # Import ImageNet loader lazily so non-ImageNet workflows do not require
         # optional ImageNet dependencies at module import time.
-        from dataio.imagenet import prepare_data
+        from src.dataio.imagenet import prepare_data
 
         classes = 1000
         normalization = NormalizeByChannelMeanStd(

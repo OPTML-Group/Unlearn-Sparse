@@ -1,5 +1,4 @@
-import trainer
-
+import src.trainer as trainer
 from . import utils
 
 

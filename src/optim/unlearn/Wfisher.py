@@ -2,7 +2,7 @@ import torch
 from torch.autograd import grad
 from tqdm import tqdm
 
-from dataio.imagenet import get_x_y_from_data_dict
+from src.dataio.imagenet import get_x_y_from_data_dict
 
 
 def sam_grad(model, loss):

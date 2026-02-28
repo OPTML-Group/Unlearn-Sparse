@@ -2,11 +2,11 @@ import time
 
 import torch
 
-from core import utils
+from src.core import utils
 
 from .impl import iterative_unlearn
 
-from dataio.imagenet import get_x_y_from_data_dict
+from src.dataio.imagenet import get_x_y_from_data_dict
 
 
 def l1_regularization(model):

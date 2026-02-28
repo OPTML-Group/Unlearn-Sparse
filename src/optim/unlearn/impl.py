@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import pruner
-from core import utils
-from pruner import extract_mask, prune_model_custom, remove_prune
+import src.pruner as pruner
+from src.core import utils
+from src.pruner import extract_mask, prune_model_custom, remove_prune
 
-from trainer import validate
+from src.trainer import validate
 
 
 def plot_training_curve(training_result, save_dir, prefix):

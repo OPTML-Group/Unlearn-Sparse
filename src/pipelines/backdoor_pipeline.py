@@ -4,10 +4,10 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
-import pruner
-from optim import unlearn
-from core import utils
-from trainer import validate
+import src.pruner as pruner
+from src.optim import unlearn
+from src.core import utils
+from src.trainer import validate
 
 
 def run_backdoor(args):

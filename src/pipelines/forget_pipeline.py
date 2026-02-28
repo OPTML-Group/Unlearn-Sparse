@@ -5,11 +5,11 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 
-import evaluation
-import pruner
-from optim import unlearn
-from core import utils
-from trainer import validate
+import src.evaluation as evaluation
+import src.pruner as pruner
+from src.optim import unlearn
+from src.core import utils
+from src.trainer import validate
 
 
 def _setup_device(args):

@@ -1,5 +1,4 @@
-import pruner
-
+import src.pruner as pruner
 from .FT import FT_iter
 from .impl import iterative_unlearn
 

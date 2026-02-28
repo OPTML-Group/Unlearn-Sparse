@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.svm import SVC
 
-from dataio.imagenet import get_x_y_from_data_dict
+from src.dataio.imagenet import get_x_y_from_data_dict
 
 
 def entropy(p, dim=-1, keepdim=False):

@@ -8,8 +8,8 @@ import copy
 import numpy as np
 import torch
 
-from dataio.dataset import *
-from models import *
+from src.dataio.dataset import *
+from src.models import *
 
 # from advertorch.utils import NormalizeByChannelMeanStd
 
