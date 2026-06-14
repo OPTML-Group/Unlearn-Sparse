@@ -7,6 +7,7 @@ import argparse
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 UNLEARN_METHODS = {
@@ -317,6 +318,116 @@ def emit_imagenet(args) -> list[str]:
     return lines
 
 
+def transfer_cmd(
+    args,
+    *,
+    seed: int,
+    target_dataset: str,
+    source_checkpoint: Path,
+    save_dir: Path,
+    split_file: Optional[str] = None,
+) -> list[str]:
+    cmd = [
+        "python",
+        "-u",
+        "main.py",
+        "transfer",
+        "--arch",
+        "resnet18",
+        "--imagenet_arch",
+        "--source_checkpoint",
+        str(source_checkpoint),
+        "--source_num_classes",
+        "1000",
+        "--target_dataset",
+        target_dataset,
+        "--target_data",
+        args.data,
+        "--save_dir",
+        str(save_dir),
+        "--transfer_method",
+        args.transfer_method,
+        "--transfer_epochs",
+        str(args.transfer_epochs),
+        "--transfer_lr",
+        str(args.transfer_lr),
+        "--transfer_optimizer",
+        "Adam",
+        "--transfer_resolution",
+        "224",
+        "--batch_size",
+        str(args.transfer_batch_size),
+        "--transfer_test_batch_size",
+        str(args.transfer_test_batch_size),
+        "--workers",
+        str(args.workers),
+        "--seed",
+        str(seed),
+    ]
+    if split_file:
+        cmd.extend(["--transfer_split_file", split_file])
+    return cmd
+
+
+def emit_transfer(args) -> list[str]:
+    lines = [
+        "# Transfer-learning commands for the paper's ImageNet -> OxfordPets/SUN397 setup.",
+        "# Run ImageNet source/unlearning first, then point --source_checkpoint to the resulting checkpoint.",
+        "# SUN397 paper-equivalent reproduction should use a CoOp-style split via --sun397-split.",
+    ]
+    targets = [
+        ("oxfordpets", args.oxfordpets_split or None),
+        ("sun397", args.sun397_split or None),
+    ]
+    for seed in args.seeds:
+        base_dir = Path(args.runs) / "transfer" / f"seed_{seed}"
+        source_checkpoint = (
+            Path(args.runs)
+            / "imagenet_resnet18"
+            / f"seed_{seed}"
+            / "0model_SA_best.pth.tar"
+        )
+        for target_dataset, split_file in targets:
+            save_dir = base_dir / target_dataset / "source"
+            lines.append(
+                shell_join(
+                    transfer_cmd(
+                        args,
+                        seed=seed,
+                        target_dataset=target_dataset,
+                        source_checkpoint=source_checkpoint,
+                        save_dir=save_dir,
+                        split_file=split_file,
+                    )
+                )
+            )
+
+        for forget_count in ["100", "200", "300"]:
+            source_checkpoint = (
+                Path(args.runs)
+                / "imagenet_resnet18"
+                / f"seed_{seed}"
+                / f"forget_{forget_count}"
+                / "FT_prunecheckpoint.pth.tar"
+            )
+            for target_dataset, split_file in targets:
+                save_dir = base_dir / target_dataset / f"forget_{forget_count}"
+                lines.append(
+                    shell_join(
+                        transfer_cmd(
+                            args,
+                            seed=seed,
+                            target_dataset=target_dataset,
+                            source_checkpoint=source_checkpoint,
+                            save_dir=save_dir,
+                            split_file=split_file,
+                        )
+                    )
+                )
+    lines.append("")
+    return lines
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -327,6 +438,7 @@ def main() -> None:
             "appendix",
             "backdoor",
             "imagenet",
+            "transfer",
             "all",
         ],
         default="core",
@@ -337,6 +449,13 @@ def main() -> None:
     parser.add_argument("--seeds", type=parse_seeds, default=parse_seeds("1"))
     parser.add_argument("--epochs", type=int, default=182)
     parser.add_argument("--rewind-epoch", type=int, default=8)
+    parser.add_argument("--transfer-method", choices=["lp", "ff"], default="lp")
+    parser.add_argument("--transfer-epochs", type=int, default=200)
+    parser.add_argument("--transfer-lr", type=float, default=1e-4)
+    parser.add_argument("--transfer-batch-size", type=int, default=128)
+    parser.add_argument("--transfer-test-batch-size", type=int, default=1024)
+    parser.add_argument("--oxfordpets-split", default="")
+    parser.add_argument("--sun397-split", default="")
     args = parser.parse_args()
 
     emitters = {
@@ -345,6 +464,7 @@ def main() -> None:
         "appendix": emit_appendix,
         "backdoor": emit_backdoor,
         "imagenet": emit_imagenet,
+        "transfer": emit_transfer,
     }
     suites = list(emitters) if args.suite == "all" else [args.suite]
 

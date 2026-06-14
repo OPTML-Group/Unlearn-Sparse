@@ -11,7 +11,8 @@ def build_cli():
             "  train    Train + iterative pruning (replaces main_imp.py/main_ls.py/main_sam.py/main_vit.py/main_synflow.py)\n"
             "  prune    Legacy alias of 'train'\n"
             "  unlearn  Run machine unlearning (replaces main_forget.py/main_forget_imagenet.py)\n"
-            "  backdoor Run backdoor cleanse experiment (replaces main_backdoor.py)"
+            "  backdoor Run backdoor cleanse experiment (replaces main_backdoor.py)\n"
+            "  transfer Run downstream transfer learning / linear probing"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -19,18 +20,18 @@ def build_cli():
 
     def _add_train_profile_arg(subparser):
         subparser.add_argument(
-        "--profile",
-        default="imp",
-        choices=["imp", "ls", "sam", "vit", "synflow"],
-        help=(
-            "Training profile (with pruning strategy):\n"
-            "  imp -> standard IMP/OMP training pipeline\n"
-            "  ls  -> label-smoothing variant\n"
-            "  sam -> SAM optimizer variant\n"
-            "  vit -> ViT-style optimizer/scheduler variant\n"
-            "  synflow -> SynFlow pruning pipeline"
-        ),
-    )
+            "--profile",
+            default="imp",
+            choices=["imp", "ls", "sam", "vit", "synflow"],
+            help=(
+                "Training profile (with pruning strategy):\n"
+                "  imp -> standard IMP/OMP training pipeline\n"
+                "  ls  -> label-smoothing variant\n"
+                "  sam -> SAM optimizer variant\n"
+                "  vit -> ViT-style optimizer/scheduler variant\n"
+                "  synflow -> SynFlow pruning pipeline"
+            ),
+        )
 
     train = subparsers.add_parser("train", help="Train + iterative pruning")
     _add_train_profile_arg(train)
@@ -51,6 +52,9 @@ def build_cli():
 
     subparsers.add_parser(
         "backdoor", help="Run backdoor cleanse pipeline (legacy: main_backdoor.py)"
+    )
+    subparsers.add_parser(
+        "transfer", help="Run downstream transfer learning", add_help=False
     )
     return parser
 
@@ -73,6 +77,12 @@ def main():
         from src.pipelines.backdoor_pipeline import run_backdoor
 
         run_backdoor(run_args)
+        return
+
+    if cli_args.command == "transfer":
+        from src.pipelines.transfer_pipeline import run_transfer
+
+        run_transfer(run_args)
         return
 
     from src.pipelines.forget_pipeline import run_forget

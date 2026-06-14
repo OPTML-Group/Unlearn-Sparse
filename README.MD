@@ -38,6 +38,7 @@ conda env create -f environment.yml
 1. Run ```train``` first to produce a sparse checkpoint.
 2. Run ```unlearn``` with that checkpoint (via ```--mask```) to remove target-data influence.
 3. Check accuracy + MIA results, and optionally run ```backdoor``` for security-focused evaluation.
+4. Use ```transfer``` to run downstream linear probing from an ImageNet source or unlearned checkpoint.
 
 ## Commands
 
@@ -159,7 +160,21 @@ python -u main.py backdoor \
 ```
 This command evaluates unlearning in a security setting by first simulating poisoned trigger behavior and then applying unlearning to clean it, with the key readout being whether attack success drops while clean accuracy remains usable.
 
-### 4) Resume interrupted runs
+### 4) Transfer learning (single entry: `transfer`)
+
+```bash
+python -u main.py transfer \
+  --arch resnet18 --imagenet_arch \
+  --source_checkpoint ./runs/imagenet_resnet18/FT_prunecheckpoint.pth.tar \
+  --target_dataset oxfordpets --target_data ./data \
+  --save_dir ./runs/transfer/oxfordpets_lp \
+  --transfer_method lp --transfer_epochs 200 --transfer_lr 0.0001 \
+  --transfer_optimizer Adam --transfer_resolution 224 \
+  --batch_size 128 --transfer_test_batch_size 1024
+```
+This command evaluates the paper's transfer-learning setup: load an ImageNet source or unlearned checkpoint, replace the classifier for the downstream dataset, freeze the feature extractor under ```--transfer_method lp```, and train only the new head. Supported downstream loaders are ```oxfordpets```, ```sun397```, ImageFolder train/test paths, or a CoOp-style JSON split via ```--transfer_split_file```. For strict SUN397 reproduction, pass the same split file used by the paper; otherwise the torchvision SUN397 path uses a deterministic stratified fallback split.
+
+### 5) Resume interrupted runs
 
 ```bash
 # resume pruning
@@ -179,6 +194,7 @@ The source code is organized as follows:
     - `train` -> `src/pipelines/train_pipeline.py`
     - `unlearn` -> `src/pipelines/forget_pipeline.py`
     - `backdoor` -> `src/pipelines/backdoor_pipeline.py`
+    - `transfer` -> `src/pipelines/transfer_pipeline.py`
 
 - **Core CLI / Utilities**
   - `src/core/arg_parser.py`: Shared argument definitions used by all workflows.
@@ -188,6 +204,7 @@ The source code is organized as follows:
   - `src/pipelines/train_pipeline.py`: Training + pruning implementations (IMP/LS/SAM/ViT profiles and SynFlow).
   - `src/pipelines/forget_pipeline.py`: Unlearning pipeline; loads sparse masks, runs unlearn methods, and evaluates accuracy/MIA.
   - `src/pipelines/backdoor_pipeline.py`: Backdoor cleansing pipeline; builds poisoned data loaders and applies unlearning.
+  - `src/pipelines/transfer_pipeline.py`: Downstream linear probing/full finetuning from ImageNet source or unlearned checkpoints.
 
 - **Training / Optimization / Pruning**
   - `src/trainer/`: Train/validate loops (standard SGD loop and SAM training loop).

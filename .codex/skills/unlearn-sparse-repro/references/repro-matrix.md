@@ -11,6 +11,7 @@ The paper evaluates "prune first, then unlearn" across class-wise forgetting, ra
 - `python main.py train`: baseline training plus iterative pruning profiles `imp`, `ls`, `sam`, `vit`, `synflow`.
 - `python main.py unlearn`: retrain/approximate unlearning and automatic accuracy/MIA evaluation.
 - `python main.py backdoor`: backdoor poisoning and cleanse flow.
+- `python main.py transfer`: downstream transfer learning from an ImageNet checkpoint.
 
 The paper metrics map to repo outputs as follows:
 
@@ -120,11 +121,26 @@ python -u main.py unlearn --dataset imagenet --imagenet_arch --arch resnet18 \
 
 ## Transfer Learning Result
 
-The paper evaluates removing ImageNet classes and downstream linear probing on SUN397 and OxfordPets, with FFCV used for acceleration. The current repo does not provide a complete transfer-learning CLI for this table. To reproduce it, state the missing pieces:
+The paper evaluates removing ImageNet classes and downstream linear probing on SUN397 and OxfordPets, with FFCV used for acceleration. The repo now exposes this as `main.py transfer`.
 
-- An ImageNet source-model unlearning stage.
-- Downstream dataset loaders for SUN397 and OxfordPets.
-- A linear-probing script that freezes the feature extractor and trains only the classification head.
-- Runtime logging consistent with the paper's comparison.
+Default command shape:
 
-Do not claim this result is fully reproducible from `main.py` alone.
+```bash
+python -u main.py transfer --arch resnet18 --imagenet_arch \
+  --source_checkpoint ./runs/imagenet_resnet18/forget_100/FT_prunecheckpoint.pth.tar \
+  --target_dataset oxfordpets --target_data ./data \
+  --save_dir ./runs/transfer/oxfordpets_forget_100 \
+  --transfer_method lp --transfer_epochs 200 --transfer_lr 0.0001 \
+  --transfer_optimizer Adam --transfer_resolution 224 \
+  --batch_size 128 --transfer_test_batch_size 1024
+```
+
+Transfer options:
+
+- `--transfer_method lp`: freezes the feature extractor and trains only the classifier head. This is the paper-aligned default.
+- `--transfer_method ff`: full finetuning, available for ablations but not the Table 4 default.
+- `--target_dataset oxfordpets`: uses torchvision Oxford-IIIT Pet `trainval`/`test`.
+- `--target_dataset sun397`: uses torchvision SUN397 and a deterministic stratified fallback split.
+- `--transfer_split_file <json>`: preferred for paper-equivalent SUN397/OxfordPets CoOp-style splits. JSON entries can use `impath`, `image`, or `path` plus `label`; tuple/list entries can use `[path, label, ...]`.
+
+Exact Table 4 reproduction still requires matching the paper's ImageNet source/unlearned checkpoints for 100/200/300 removed classes and, for strict downstream comparability, the same split assets used in the paper. The current repo uses torchvision loaders instead of FFCV, so report runtime separately.
