@@ -360,7 +360,23 @@ class SwinTransformer(nn.Module):
         return self.mlp_head(x)
 
 
+_CIFAR_SWINT_DEFAULTS = {
+    "window_size": 4,
+    "downscaling_factors": (2, 2, 2, 1),
+}
+
+
+def _resolve_swin_t_kwargs(kwargs):
+    kwargs = dict(kwargs)
+    imagenet = kwargs.pop("imagenet", False)
+    if not imagenet:
+        for key, value in _CIFAR_SWINT_DEFAULTS.items():
+            kwargs.setdefault(key, value)
+    return kwargs
+
+
 def swin_t(hidden_dim=96, layers=(2, 2, 6, 2), heads=(3, 6, 12, 24), **kwargs):
+    kwargs = _resolve_swin_t_kwargs(kwargs)
     return SwinTransformer(hidden_dim=hidden_dim, layers=layers, heads=heads, **kwargs)
 
 
