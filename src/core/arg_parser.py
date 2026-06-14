@@ -146,4 +146,106 @@ def parse_args(argv=None):
         default=4,
         help="The size of trigger of backdoor attack",
     )
+    ##################################### Transfer learning setting #####################################
+    parser.add_argument(
+        "--source_checkpoint",
+        type=str,
+        default=None,
+        help="ImageNet source/unlearned checkpoint for transfer learning",
+    )
+    parser.add_argument(
+        "--source_num_classes",
+        type=int,
+        default=1000,
+        help="Number of classes in the source checkpoint head",
+    )
+    parser.add_argument(
+        "--target_dataset",
+        type=str,
+        default="oxfordpets",
+        help="Downstream transfer dataset: oxfordpets, sun397, or imagefolder",
+    )
+    parser.add_argument(
+        "--target_data",
+        type=str,
+        default="./data",
+        help="Root directory for downstream transfer datasets",
+    )
+    parser.add_argument(
+        "--target_train_path",
+        type=str,
+        default=None,
+        help="Optional ImageFolder train path for transfer learning",
+    )
+    parser.add_argument(
+        "--target_test_path",
+        type=str,
+        default=None,
+        help="Optional ImageFolder test path for transfer learning",
+    )
+    parser.add_argument(
+        "--transfer_split_file",
+        type=str,
+        default=None,
+        help="Optional CoOp-style JSON split file with train/val/test entries",
+    )
+    parser.add_argument(
+        "--transfer_include_val",
+        action="store_true",
+        help="Include val entries from --transfer_split_file in transfer training",
+    )
+    parser.add_argument(
+        "--transfer_train_ratio",
+        type=float,
+        default=0.8,
+        help="Deterministic train ratio for datasets without official train/test split",
+    )
+    parser.add_argument(
+        "--transfer_method",
+        type=str,
+        default="lp",
+        choices=["lp", "ff"],
+        help="Transfer method: lp freezes the feature extractor, ff full-finetunes",
+    )
+    parser.add_argument(
+        "--transfer_epochs", type=int, default=200, help="Transfer training epochs"
+    )
+    parser.add_argument(
+        "--transfer_lr", type=float, default=1e-4, help="Transfer optimizer learning rate"
+    )
+    parser.add_argument(
+        "--transfer_weight_decay",
+        type=float,
+        default=0.0,
+        help="Transfer optimizer weight decay",
+    )
+    parser.add_argument(
+        "--transfer_optimizer",
+        type=str,
+        default="Adam",
+        choices=["Adam", "SGD"],
+        help="Transfer optimizer",
+    )
+    parser.add_argument(
+        "--transfer_resolution",
+        type=int,
+        default=224,
+        help="Input resolution for downstream transfer learning",
+    )
+    parser.add_argument(
+        "--transfer_test_batch_size",
+        type=int,
+        default=1024,
+        help="Transfer evaluation batch size",
+    )
+    parser.add_argument(
+        "--transfer_download",
+        action="store_true",
+        help="Download torchvision downstream datasets when missing",
+    )
+    parser.add_argument(
+        "--transfer_eval_only",
+        action="store_true",
+        help="Only evaluate a transfer checkpoint from --checkpoint",
+    )
     return parser.parse_args(argv)

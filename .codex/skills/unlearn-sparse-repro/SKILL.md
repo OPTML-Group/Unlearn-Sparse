@@ -12,6 +12,7 @@ description: Build and verify reproduction plans for the Unlearn-Sparse paper "M
    - `python main.py train --help`
    - `python main.py unlearn --help`
    - `python main.py backdoor --help`
+   - `python main.py transfer --help`
    - `git status --short --branch`
 2. Read `references/repro-matrix.md` when mapping paper results to commands or when the user asks for "all experiments".
 3. Use `scripts/generate_repro_commands.py` to create a runnable bash plan, then review the generated commands before running long jobs.
@@ -35,6 +36,7 @@ Available suites:
 - `appendix`: extra dataset/model sweeps that are exposed by the current CLI.
 - `backdoor`: Trojan cleanse commands across sparsity levels.
 - `imagenet`: ImageNet unlearning command skeletons with required label/HuggingFace prerequisites called out.
+- `transfer`: downstream OxfordPets/SUN397 linear-probing commands from ImageNet checkpoints.
 - `all`: concatenate all reproducible suites.
 
 The generator only emits commands; it does not submit jobs. If the user asks to run them, ask for the GPU budget or choose a small smoke subset.
@@ -66,4 +68,4 @@ If a run is resumed, verify that the saved `evaluation_result` is not silently s
 
 ## Repro Limits
 
-Be explicit about coverage. The current repo directly covers train/prune, unlearn, MIA evaluation, and backdoor cleanse. The paper's ImageNet transfer-learning application requires downstream linear-probing/FFCV pieces that are not exposed as a first-class CLI in this checkout; document the missing step instead of inventing a command.
+Be explicit about coverage. The current repo directly covers train/prune, unlearn, MIA evaluation, backdoor cleanse, and downstream transfer through `main.py transfer`. The transfer CLI implements the paper's linear-probing shape, but exact Table 4 reproduction still depends on using the same ImageNet class-removal checkpoints and downstream split files; the repo uses torchvision loaders instead of FFCV.
