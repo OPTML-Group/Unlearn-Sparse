@@ -11,15 +11,18 @@ def entropy(p, dim=-1, keepdim=False):
 
 
 def m_entropy(p, labels, dim=-1, keepdim=False):
-    log_prob = torch.where(p > 0, p.log(), torch.tensor(1e-30).to(p.device).log())
+    eps = p.new_tensor(1e-30)
+    labels = labels.to(device=p.device, dtype=torch.long)
+    log_prob = torch.where(p > 0, p.log(), eps.log())
     reverse_prob = 1 - p
     log_reverse_prob = torch.where(
-        p > 0, p.log(), torch.tensor(1e-30).to(p.device).log()
+        reverse_prob > 0, reverse_prob.log(), eps.log()
     )
     modified_probs = p.clone()
-    modified_probs[:, labels] = reverse_prob[:, labels]
+    rows = torch.arange(p.size(0), device=p.device)
+    modified_probs[rows, labels] = reverse_prob[rows, labels]
     modified_log_probs = log_reverse_prob.clone()
-    modified_log_probs[:, labels] = log_prob[:, labels]
+    modified_log_probs[rows, labels] = log_prob[rows, labels]
     return -torch.sum(modified_probs * modified_log_probs, dim=dim, keepdim=keepdim)
 
 

@@ -129,14 +129,14 @@ def check_sparsity(model):
             sum_list = sum_list + float(m.weight.nelement())
             zero_sum = zero_sum + float(torch.sum(m.weight == 0))
 
-    if zero_sum:
-        remain_weight_ratie = 100 * (1 - zero_sum / sum_list)
-        print("* remain weight ratio = ", 100 * (1 - zero_sum / sum_list), "%")
-    else:
+    if sum_list == 0:
         print("no weight for calculating sparsity")
-        remain_weight_ratie = None
+        remain_weight_ratio = None
+    else:
+        remain_weight_ratio = 100 * (1 - zero_sum / sum_list)
+        print("* remain weight ratio = ", remain_weight_ratio, "%")
 
-    return remain_weight_ratie
+    return remain_weight_ratio
 
 
 def count_sparsity(model):
@@ -165,14 +165,14 @@ def check_sparsity_dict(state_dict):
             sum_list += float(state_dict[key].nelement())
             zero_sum += float(torch.sum(state_dict[key] == 0))
 
-    if zero_sum:
-        remain_weight_ratie = 100 * (1 - zero_sum / sum_list)
-        print("* remain weight ratio = ", 100 * (1 - zero_sum / sum_list), "%")
-    else:
+    if sum_list == 0:
         print("no weight for calculating sparsity")
-        remain_weight_ratie = None
+        remain_weight_ratio = None
+    else:
+        remain_weight_ratio = 100 * (1 - zero_sum / sum_list)
+        print("* remain weight ratio = ", remain_weight_ratio, "%")
 
-    return remain_weight_ratie
+    return remain_weight_ratio
 
 
 def fetch_data(dataloader, num_classes, samples_per_class):

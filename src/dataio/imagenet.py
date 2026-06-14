@@ -133,15 +133,17 @@ def prepare_data(
     validation_set.set_transform(transform=validation_transform)
 
     if train_subset_indices is not None:
-        forget_indices = torch.ones_like(train_subset_indices) - train_subset_indices
-        train_subset_indices = torch.nonzero(train_subset_indices)
-
-        forget_indices = torch.nonzero(forget_indices)
-        retain_set = Subset(train_set, train_subset_indices)
+        retain_mask = train_subset_indices.bool()
+        forget_mask = ~retain_mask
+        retain_indices = torch.nonzero(retain_mask, as_tuple=True)[0].tolist()
+        forget_indices = torch.nonzero(forget_mask, as_tuple=True)[0].tolist()
+        retain_set = Subset(train_set, retain_indices)
         forget_set = Subset(train_set, forget_indices)
     if val_subset_indices is not None:
-        val_subset_indices = torch.nonzero(val_subset_indices)
-        validation_set = Subset(validation_set, val_subset_indices)
+        val_indices = torch.nonzero(val_subset_indices.bool(), as_tuple=True)[
+            0
+        ].tolist()
+        validation_set = Subset(validation_set, val_indices)
     if train_subset_indices is not None:
         loaders = {
             "train": DataLoader(
