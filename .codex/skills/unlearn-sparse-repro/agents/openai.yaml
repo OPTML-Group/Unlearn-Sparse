@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unlearn Sparse Repro"
+  short_description: "Reproduce Unlearn-Sparse experiments"
+  default_prompt: "Use $unlearn-sparse-repro to create and verify a reproduction plan for the Unlearn-Sparse paper."
