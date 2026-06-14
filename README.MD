@@ -33,6 +33,14 @@ In response to recent data regulation requirements, machine unlearning (MU) has 
 conda env create -f environment.yml
 ```
 
+Development quality checks:
+
+```bash
+python -m pip install -r requirements-dev.txt
+ruff check .
+pyright
+```
+
 ## Quick Start
 
 1. Run ```train``` first to produce a sparse checkpoint.

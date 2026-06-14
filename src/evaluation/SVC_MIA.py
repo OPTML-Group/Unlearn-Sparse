@@ -39,7 +39,7 @@ def collect_prob(data_loader, model):
             try:
                 batch = [tensor.to(next(model.parameters()).device) for tensor in batch]
                 data, target = batch
-            except:
+            except (AttributeError, TypeError, ValueError):
                 device = (
                     torch.device("cuda:0")
                     if torch.cuda.is_available()

@@ -7,8 +7,8 @@ import torch.utils.data
 
 import src.evaluation as evaluation
 import src.pruner as pruner
-from src.optim import unlearn
 from src.core import utils
+from src.optim import unlearn
 from src.trainer import validate
 
 

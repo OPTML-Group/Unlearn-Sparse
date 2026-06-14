@@ -12,7 +12,7 @@ from shutil import move
 import numpy as np
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10, CIFAR100, SVHN, ImageFolder
 from tqdm import tqdm
@@ -699,22 +699,12 @@ def replace_class(
     seed: int = 0,
     only_mark: bool = False,
 ):
+    label_attr = _first_existing_attr(dataset, ("targets", "labels", "_labels"))
+    labels = getattr(dataset, label_attr)
     if class_to_replace == -1:
-        try:
-            indexes = np.flatnonzero(np.ones_like(dataset.targets))
-        except:
-            try:
-                indexes = np.flatnonzero(np.ones_like(dataset.labels))
-            except:
-                indexes = np.flatnonzero(np.ones_like(dataset._labels))
+        indexes = np.flatnonzero(np.ones_like(labels))
     else:
-        try:
-            indexes = np.flatnonzero(np.array(dataset.targets) == class_to_replace)
-        except:
-            try:
-                indexes = np.flatnonzero(np.array(dataset.labels) == class_to_replace)
-            except:
-                indexes = np.flatnonzero(np.array(dataset._labels) == class_to_replace)
+        indexes = np.flatnonzero(np.array(labels) == class_to_replace)
 
     if num_indexes_to_replace is not None:
         assert num_indexes_to_replace <= len(

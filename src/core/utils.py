@@ -9,7 +9,6 @@ import random
 
 # from advertorch.utils import NormalizeByChannelMeanStd
 import shutil
-import sys
 import time
 
 import numpy as np

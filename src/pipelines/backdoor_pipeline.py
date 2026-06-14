@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 
 import src.pruner as pruner
-from src.optim import unlearn
 from src.core import utils
+from src.optim import unlearn
 from src.trainer import validate
 
 

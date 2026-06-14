@@ -1,15 +1,11 @@
-import copy
-
 import src.pruner as pruner
 import src.trainer as trainer
-from .FT import FT, FT_l1
+
+from .FT import FT_l1
 
 
 def FT_prune(data_loaders, model, criterion, args):
     test_loader = data_loaders["test"]
-
-    # save checkpoint
-    initialization = copy.deepcopy(model.state_dict())
 
     # unlearn
     FT_l1(data_loaders, model, criterion, args)

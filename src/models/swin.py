@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from einops import rearrange, repeat
+from einops import rearrange
 from torch import einsum, nn
 
 
@@ -131,7 +131,7 @@ class WindowAttention(nn.Module):
         if self.shifted:
             x = self.cyclic_shift(x)
 
-        b, n_h, n_w, _, h = *x.shape, self.heads
+        _, n_h, n_w, _, h = *x.shape, self.heads
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
         nw_h = n_h // self.window_size
