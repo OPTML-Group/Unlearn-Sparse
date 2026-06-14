@@ -18,6 +18,27 @@ from torchvision.datasets import CIFAR10, CIFAR100, SVHN, ImageFolder
 from tqdm import tqdm
 
 
+def _first_existing_attr(obj, attr_names):
+    for attr_name in attr_names:
+        if hasattr(obj, attr_name):
+            return attr_name
+    raise AttributeError(f"{type(obj).__name__} does not expose any of {attr_names}")
+
+
+def _take_indexed(values, indexes):
+    if isinstance(values, list):
+        return [values[int(index)] for index in indexes]
+    return values[indexes]
+
+
+def _assign_indexed(values, indexes, replacements):
+    if isinstance(values, list):
+        for index, replacement in zip(indexes, replacements):
+            values[int(index)] = replacement
+    else:
+        values[indexes] = replacements
+
+
 def cifar10_dataloaders_no_val(
     batch_size=128, data_dir="datasets/cifar10", num_workers=2
 ):
@@ -648,27 +669,27 @@ def cifar10_dataloaders(
 def replace_indexes(
     dataset: torch.utils.data.Dataset, indexes, seed=0, only_mark: bool = False
 ):
+    indexes = np.asarray(indexes, dtype=int)
+    label_attr = _first_existing_attr(dataset, ("targets", "labels", "_labels"))
+    labels = getattr(dataset, label_attr)
+
     if not only_mark:
         rng = np.random.RandomState(seed)
         new_indexes = rng.choice(
             list(set(range(len(dataset))) - set(indexes)), size=len(indexes)
         )
-        dataset.data[indexes] = dataset.data[new_indexes]
-        try:
-            dataset.targets[indexes] = dataset.targets[new_indexes]
-        except:
-            dataset.labels[indexes] = dataset.labels[new_indexes]
-        else:
-            dataset._labels[indexes] = dataset._labels[new_indexes]
+        data_attr = _first_existing_attr(dataset, ("data", "imgs"))
+        data = getattr(dataset, data_attr)
+        _assign_indexed(data, indexes, _take_indexed(data, new_indexes))
+        _assign_indexed(labels, indexes, _take_indexed(labels, new_indexes))
     else:
         # Notice the -1 to make class 0 work
-        try:
-            dataset.targets[indexes] = -dataset.targets[indexes] - 1
-        except:
-            try:
-                dataset.labels[indexes] = -dataset.labels[indexes] - 1
-            except:
-                dataset._labels[indexes] = -dataset._labels[indexes] - 1
+        old_labels = _take_indexed(labels, indexes)
+        if isinstance(old_labels, torch.Tensor):
+            new_labels = -old_labels - 1
+        else:
+            new_labels = -np.asarray(old_labels) - 1
+        _assign_indexed(labels, indexes, new_labels)
 
 
 def replace_class(
