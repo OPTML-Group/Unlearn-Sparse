@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-
 UNLEARN_METHODS = {
     "retrain": ["--unlearn", "retrain", "--unlearn_epochs", "160", "--unlearn_lr", "0.1"],
     "FT": ["--unlearn", "FT", "--unlearn_epochs", "10", "--unlearn_lr", "0.01"],

@@ -16,43 +16,6 @@ def sam_grad(model, loss):
 
 def apply_perturb(model, v):
     curr = 0
-    for param in model.parameters():
-        length = param.view(-1).shape[0]
-        param.view(-1).data += v[curr : curr + length].data
-        curr += length
-
-
-def woodfisher(model, train_dl, device, criterion, v):
-    model.eval()
-    k_vec = torch.clone(v)
-    N = len(train_dl)
-
-    for idx, (data, label) in enumerate(tqdm(train_dl)):
-        data = data.to(device)
-        label = label.to(device)
-        output = model(data)
-        loss = criterion(output, label)
-        sample_grad = sam_grad(model, loss)
-        if idx == 0:
-            o_vec = torch.clone(sample_grad)
-        else:
-            tmp = torch.dot(o_vec, sample_grad)
-            k_vec -= (torch.dot(k_vec, sample_grad) / (N + tmp)) * o_vec
-            o_vec -= (tmp / (N + tmp)) * o_vec
-    return k_vec
-
-
-def sam_grad(model, loss):
-    params = []
-    for param in model.parameters():
-        params.append(param)
-    sample_grad = grad(loss, params)
-    sample_grad = [x.view(-1) for x in sample_grad]
-    return torch.cat(sample_grad)
-
-
-def apply_perturb(model, v):
-    curr = 0
     with torch.no_grad():
         for param in model.parameters():
             length = param.view(-1).shape[0]

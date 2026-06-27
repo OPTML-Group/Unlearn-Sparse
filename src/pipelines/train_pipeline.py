@@ -18,18 +18,20 @@ from src.pruner import (
     remove_prune,
 )
 from src.trainer import train as default_train
-from src.trainer import train_sam_epoch
-from src.trainer import validate
+from src.trainer import train_sam_epoch, validate
 
 
 def _imagenet_lambda_scheduler(args, optimizer, total_epochs):
-    lambda0 = (
-        lambda cur_iter: (cur_iter + 1) / args.warmup
-        if cur_iter < args.warmup
-        else (
-            0.5 * (1.0 + np.cos(np.pi * ((cur_iter - args.warmup) / (total_epochs - args.warmup))))
+    def lambda0(cur_iter):
+        if cur_iter < args.warmup:
+            return (cur_iter + 1) / args.warmup
+        return 0.5 * (
+            1.0
+            + np.cos(
+                np.pi * ((cur_iter - args.warmup) / (total_epochs - args.warmup))
+            )
         )
-    )
+
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda0)
 
 

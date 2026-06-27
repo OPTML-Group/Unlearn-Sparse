@@ -9,8 +9,6 @@ import src.pruner as pruner
 from src.core import utils
 from src.pruner import extract_mask, prune_model_custom, remove_prune
 
-from src.trainer import validate
-
 
 def plot_training_curve(training_result, save_dir, prefix):
     # plot training curve
@@ -74,10 +72,10 @@ def _iterative_unlearn_impl(unlearn_iter_func):
             weight_decay=args.weight_decay,
         )
         if args.imagenet_arch and args.unlearn == "retrain":
-            lambda0 = (
-                lambda cur_iter: (cur_iter + 1) / args.warmup
-                if cur_iter < args.warmup
-                else (
+            def lambda0(cur_iter):
+                if cur_iter < args.warmup:
+                    return (cur_iter + 1) / args.warmup
+                return (
                     0.5
                     * (
                         1.0
@@ -90,7 +88,7 @@ def _iterative_unlearn_impl(unlearn_iter_func):
                         )
                     )
                 )
-            )
+
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda0)
         else:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(
@@ -112,9 +110,7 @@ def _iterative_unlearn_impl(unlearn_iter_func):
                     epoch, optimizer.state_dict()["param_groups"][0]["lr"]
                 )
             )
-            train_acc = unlearn_iter_func(
-                data_loaders, model, criterion, optimizer, epoch, args
-            )
+            unlearn_iter_func(data_loaders, model, criterion, optimizer, epoch, args)
             scheduler.step()
 
             print("one epoch duration:{}".format(time.time() - start_time))

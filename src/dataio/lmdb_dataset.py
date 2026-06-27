@@ -107,8 +107,8 @@ def folder2lmdb(dpath, name="train", write_frequency=5000):
     )
 
     txn = db.begin(write=True)
-    for idx, data in enumerate(data_loader):
-        image, label = data[0]
+    for idx, sample in enumerate(data_loader):
+        image, label = sample[0]
 
         txn.put("{}".format(idx).encode("ascii"), dumps_data((image, label)))
         if idx % write_frequency == 0:
