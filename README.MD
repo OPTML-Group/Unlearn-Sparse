@@ -27,6 +27,42 @@ This is the official code repository for the NeurIPS 2023 Spotlight paper [Model
 
 In response to recent data regulation requirements, machine unlearning (MU) has emerged as a critical process to remove the influence of specific examples from a given model. Although exact unlearning can be achieved through complete model retraining using the remaining dataset, the associated computational costs have driven the development of efficient, approximate unlearning techniques. Moving beyond data-centric MU approaches, our study introduces a novel model-based perspective: model sparsification via weight pruning, which is capable of reducing the gap between exact unlearning and approximate unlearning. We show in both theory and practice that model sparsity can boost the multi-criteria unlearning performance of an approximate unlearner, closing the approximation gap, while continuing to be efficient. This leads to a new MU paradigm, termed prune first, then unlearn, which infuses a sparse model prior into the unlearning process. Building on this insight, we also develop a sparsity-aware unlearning method that utilizes sparsity regularization to enhance the training process of approximate unlearning. Extensive experiments show that our proposals consistently benefit MU in various unlearning scenarios. A notable highlight is the 77% unlearning efficacy gain of fine-tuning (one of the simplest unlearning methods) when using sparsity-aware unlearning. Furthermore, we demonstrate the practical impact of our proposed MU methods in addressing other machine learning challenges, such as defending against backdoor attacks and enhancing transfer learning.
 
+## Codex Skill Quick Start
+
+This repository includes a Codex skill at `.codex/skills/unlearn-sparse-repro`
+for planning and checking reproduction runs.
+
+1. Ask Codex to use the skill for reproduction planning:
+
+   ```text
+   Use the unlearn-sparse-repro skill to generate a smoke reproduction plan.
+   ```
+
+2. Use the skill to map paper results to runnable commands:
+
+   ```text
+   Use the unlearn-sparse-repro skill to map the paper's CIFAR-10 unlearning results to repo commands.
+   ```
+
+3. Use the skill to generate specialized command batches:
+
+   ```text
+   Use the unlearn-sparse-repro skill to generate transfer-learning commands for OxfordPets.
+   ```
+
+4. Or run the command generator directly from the repository root:
+
+   ```bash
+   python .codex/skills/unlearn-sparse-repro/scripts/generate_repro_commands.py \
+     --suite smoke --runs ./runs/repro --data ./data --seeds 1 \
+     > repro_smoke.sh
+   ```
+
+Available suites are `smoke`, `core`, `appendix`, `backdoor`, `imagenet`,
+`transfer`, and `all`. Start with `smoke`, review the generated script, then
+launch larger reproduction jobs only after the smoke run creates checkpoints and
+evaluation outputs.
+
 ## Requirements
 
 ```
